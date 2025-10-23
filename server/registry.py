@@ -1,32 +1,24 @@
-from tools.planner import render_change_plan
-from tools.validator import validate_change_plan
-from tools.apply.apply import apply_rendered_plan
-from tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
+def register_tools(mcp):
+    """
+    Register all tools with the FastMCP server using decorators.
+    """
+    from tools.planner import render_change_plan
+    from tools.validator import validate_change_plan
+    from tools.apply.apply import apply_rendered_plan
+    from tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
 
-def register_tools(server):
-    server.add_tool(
-        name="render_change_plan",
-        func= render_change_plan,
-        description="Render a ParameterPlan into concrete command lists/scripts. No side effects."
-    )
-    server.add_tool(
-        name="validate_change_plan",
-        func= validate_change_plan,
-        description="Schema + policy validation for a ParameterPlan."
-    )
-    server.add_tool(
-        name="apply_rendered_plan",
-        func= apply_rendered_plan,
-        description="Apply a previously rendered plan atomically, with rollback on failure."
-    )
-    server.add_tool(
-        name="snapshot_checkpoint",
-        func= snapshot_checkpoint,
-        description="Save the current network state for rollback."
-    )
-    server.add_tool(
-        name="rollback_to_checkpoint",
-        func= rollback_to_checkpoint,
-        description="Restore a previously saved network state."
-    )
+    # Register render_change_plan tool
+    mcp.tool(render_change_plan)
+    
+    # Register validate_change_plan tool
+    mcp.tool(validate_change_plan)
+    
+    # Register apply_rendered_plan tool
+    mcp.tool(apply_rendered_plan)
+    
+    # Register snapshot_checkpoint tool
+    mcp.tool(snapshot_checkpoint)
+    
+    # Register rollback_to_checkpoint tool
+    mcp.tool(rollback_to_checkpoint)
 
