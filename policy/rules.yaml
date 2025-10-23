@@ -1,0 +1,120 @@
+# Network Optimization Rules
+# Context-aware network optimization rules extracted from profiles
+
+rules:
+  # Gaming Profile Rules - Ultra-low latency adaptations
+  gaming:
+    - if: "link.type == 'wifi'"
+      then:
+        tcp_rmem: "4096 65536 8388608"
+        tcp_wmem: "4096 32768 8388608"
+
+    - if: "link.speed_mbit < 50"
+      then:
+        tcp_congestion_control: "cubic"
+        core_rmem_max: 8388608
+        core_wmem_max: 8388608
+
+    - if: "system.memory_gb < 4"
+      then:
+        tcp_rmem: "4096 32768 4194304"
+        tcp_wmem: "4096 32768 4194304"
+        core_rmem_max: 4194304
+        core_wmem_max: 4194304
+
+  # Streaming Profile Rules - High throughput adaptations
+  streaming:
+    - if: "link.type == 'ethernet' && link.speed_mbit >= 1000"
+      then:
+        core_rmem_max: 134217728
+        core_wmem_max: 134217728
+        tcp_rmem: "16384 524288 134217728"
+        tcp_wmem: "16384 524288 134217728"
+        netdev_budget: 1000
+
+    - if: "link.type == 'wifi'"
+      then:
+        tcp_rmem: "8192 131072 33554432"
+        tcp_wmem: "8192 131072 33554432"
+        core_rmem_max: 33554432
+        core_wmem_max: 33554432
+
+    - if: "link.speed_mbit < 100"
+      then:
+        tcp_rmem: "4096 65536 16777216"
+        tcp_wmem: "4096 65536 16777216"
+        core_rmem_max: 16777216
+        core_wmem_max: 16777216
+
+  # Video Calls Profile Rules - Balanced real-time adaptations
+  video_calls:
+    - if: "link.type == 'wifi'"
+      then:
+        tcp_rmem: "4096 65536 16777216"
+        tcp_wmem: "4096 65536 16777216"
+        core_rmem_max: 16777216
+        core_wmem_max: 16777216
+
+    - if: "system.cpu_cores < 4"
+      then:
+        tcp_rmem: "4096 65536 16777216"
+        tcp_wmem: "4096 65536 16777216"
+        core_rmem_max: 16777216
+        core_wmem_max: 16777216
+
+  # Bulk Transfer Profile Rules - Maximum throughput adaptations
+  bulk_transfer:
+    - if: "link.speed_mbit >= 10000"
+      then:
+        core_rmem_max: 536870912
+        core_wmem_max: 536870912
+        tcp_rmem: "65536 2097152 536870912"
+        tcp_wmem: "65536 2097152 536870912"
+        netdev_budget: 2000
+
+    - if: "link.speed_mbit >= 1000 && link.speed_mbit < 10000"
+      then:
+        core_rmem_max: 134217728
+        core_wmem_max: 134217728
+        tcp_rmem: "16384 524288 134217728"
+        tcp_wmem: "16384 524288 134217728"
+
+    - if: "system.memory_gb < 8"
+      then:
+        core_rmem_max: 67108864
+        core_wmem_max: 67108864
+        tcp_rmem: "8192 262144 67108864"
+        tcp_wmem: "8192 262144 67108864"
+
+  # Server Profile Rules - High-concurrency adaptations
+  server:
+    - if: "system.memory_gb >= 32"
+      then:
+        core_rmem_max: 134217728
+        core_wmem_max: 134217728
+        tcp_rmem: "8192 262144 134217728"
+        tcp_wmem: "8192 262144 134217728"
+        tcp_max_syn_backlog: 16384
+
+    - if: "system.cpu_cores >= 16"
+      then:
+        netdev_budget: 1000
+        connection_limiting: 200
+
+    - if: "server.type == 'public'"
+      then:
+        connection_limiting: 50
+        rate_limiting: "100/minute"
+
+# Research validation sources
+validation_sources:
+  - "RFC 1323 - TCP Extensions for High Performance"
+  - "BBR: Congestion-Based Congestion Control (Google Research)"
+  - "Linux kernel networking documentation"
+  - "WebRTC performance guidelines"
+
+# Metadata
+metadata:
+  version: "1.0"
+  last_updated: "2025-10-23"
+  
