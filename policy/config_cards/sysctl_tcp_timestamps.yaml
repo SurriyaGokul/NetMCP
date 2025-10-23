@@ -1,0 +1,123 @@
+# sysctl - TCP Timestamps
+- id: sysctl.tcp_timestamps
+  category: sysctl
+  subcategory: tcp_performance
+
+  name: "TCP Timestamps"
+  description: "Enable TCP timestamp option for improved performance"
+
+  purpose: |
+    Enables TCP timestamps (RFC 1323) which provide more accurate round-trip
+    time measurements and enable protection against wrapped sequence numbers
+    (PAWS). This improves TCP performance, especially on high-bandwidth networks,
+    and provides better congestion control. Also enables more accurate
+    measurement of connection characteristics.
+
+  use_cases:
+    primary:
+      - name: "High-Performance Networks"
+        reason: "Better RTT measurement for congestion control"
+        priority: "high"
+      - name: "High-Bandwidth Networks"
+        reason: "Protection against sequence number wrap-around"
+        priority: "high"
+
+    secondary:
+      - name: "Network Monitoring"
+        reason: "More accurate performance measurements"
+        priority: "medium"
+      - name: "Modern TCP Features"
+        reason: "Required for some advanced TCP features"
+        priority: "medium"
+
+  impact:
+    throughput: "↑" # Better congestion control improves throughput
+    rtt_accuracy: "↑↑" # More accurate RTT measurements
+    congestion_control: "↑↑" # Improved congestion control algorithms
+    security: "↓" # Slight increase in information disclosure
+    packet_overhead: "↓" # Small increase in packet size (12 bytes)
+
+  configuration:
+    command_template: "sysctl -w net.ipv4.tcp_timestamps={value}"
+
+    examples:
+      - description: "Enable TCP timestamps (recommended)"
+        command: "sysctl -w net.ipv4.tcp_timestamps=1"
+        params:
+          value: 1
+        use_case: "Standard configuration for modern networks"
+
+      - description: "Disable TCP timestamps (security/compatibility)"
+        command: "sysctl -w net.ipv4.tcp_timestamps=0"
+        params:
+          value: 0
+        use_case: "High-security environments or legacy compatibility"
+
+  parameters:
+    - name: "value"
+      type: "integer"
+      description: "Enable (1) or disable (0) TCP timestamps"
+      default: 1
+      examples: [0, 1]
+
+  when_to_use:
+    network_conditions:
+      - "High-bandwidth networks (>1Gbps)"
+      - "Networks requiring accurate performance monitoring"
+      - "Modern network environments"
+      - "Networks with variable latency"
+
+    traffic_patterns:
+      - "High-throughput applications"
+      - "Applications requiring precise timing"
+      - "Long-running TCP connections"
+      - "Applications sensitive to congestion"
+
+  monitoring:
+    - name: "timestamp_status"
+      method: "sysctl net.ipv4.tcp_timestamps"
+      expected: "Verify current configuration"
+
+    - name: "connection_rtt_accuracy"
+      method: "ss -i | grep -E 'rtt|rttvar'"
+      expected: "More stable and accurate RTT measurements when enabled"
+
+    - name: "packet_analysis"
+      method: "tcpdump -i any -c 10 'tcp[tcpflags] & tcp-syn != 0'"
+      expected: "TCP SYN packets should include timestamp option when enabled"
+
+    - name: "performance_impact"
+      method: "iperf3 -c target_host -t 30"
+      expected: "Potential throughput improvement with timestamps enabled"
+
+  complexity_level: "Low"
+  risk_level: "Low"
+
+  anti_patterns:
+    - pattern: "Disabling timestamps for performance reasons"
+      why: "Timestamps generally improve performance, not degrade it"
+      fix: "Enable timestamps unless specific security concerns exist"
+
+    - pattern: "Ignoring security implications"
+      why: "Timestamps can leak system uptime and connection information"
+      fix: "Consider security requirements before enabling in sensitive environments"
+
+    - pattern: "Not considering compatibility with very old systems"
+      why: "Some very old systems might not handle timestamps correctly"
+      fix: "Test compatibility with oldest systems in environment"
+
+    - pattern: "Enabling without understanding bandwidth requirements"
+      why: "May not provide significant benefits on low-bandwidth links"
+      fix: "Evaluate if timestamp benefits justify 12-byte overhead on slow links"
+
+  llm_guidance:
+    intent_keywords:
+      ["timestamps", "tcp", "rtt", "performance", "measurement", "accuracy"]
+    confidence_threshold: 0.9
+    prerequisite_checks:
+      - "Consider security requirements for timestamp information"
+      - "Verify compatibility with all systems in environment"
+      - "Evaluate bandwidth overhead on slow links"
+    suggested_combinations:
+      - ["sysctl.tcp_window_scaling"] # Often used together for high-performance TCP
+      - ["sysctl.tcp_congestion_control"] # Improved RTT helps congestion control

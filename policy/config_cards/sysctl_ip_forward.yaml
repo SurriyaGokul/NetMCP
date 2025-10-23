@@ -1,0 +1,58 @@
+# sysctl - IP Forward
+- id: sysctl.ip_forward
+  category: sysctl
+  subcategory: ip_forward
+
+  name: "IP Forward"
+  description: "Enable packet forwarding (routing)"
+
+  purpose: |
+    Enables the Linux kernel to forward packets between network interfaces,
+    essential for routing functionality, NAT operations, and any scenario
+    where the system acts as a gateway or router.
+
+  use_cases:
+    primary:
+      - name: "Router/NAT"
+        reason: "Required for forwarding"
+        priority: "high"
+      - name: "Gateway"
+        reason: "Essential for routing between networks"
+        priority: "high"
+
+    secondary:
+      - name: "VPN Server"
+        reason: "Route traffic between VPN and local network"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "~" # Neutral
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # Routing table lookups
+    security: "↓" # Can enable unwanted forwarding
+
+  configuration:
+    command_template: "echo '{enable}' > /proc/sys/net/ipv4/ip_forward"
+
+    examples:
+      - description: "Enable IP forwarding"
+        command: "echo '1' > /proc/sys/net/ipv4/ip_forward"
+        params:
+          enable: "1"
+
+  parameters:
+    - name: "enable"
+      type: "integer"
+      description: "Enable (1) or disable (0) IP forwarding"
+      default: "1"
+      valid_values: ["0", "1"]
+
+  complexity_level: "Critical"
+  risk_level: "Critical - Enables routing"
+
+  llm_guidance:
+    intent_keywords: ["ip forward", "routing", "nat", "gateway"]
+    confidence_threshold: 0.95
+    suggested_combinations:
+      - ["iptables.nat"] # NAT requires IP forwarding

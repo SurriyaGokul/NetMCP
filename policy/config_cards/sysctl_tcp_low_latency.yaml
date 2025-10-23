@@ -1,0 +1,80 @@
+# sysctl - TCP Low Latency
+- id: sysctl.tcp_low_latency
+  category: sysctl
+  subcategory: tcp_low_latency
+
+  name: "TCP Low Latency"
+  description: "Prioritize latency over throughput"
+
+  purpose: |
+    Configures TCP to prioritize low latency over maximum throughput by
+    reducing buffering and processing delays. Essential for gaming and
+    real-time applications where latency is more critical than raw bandwidth.
+
+  use_cases:
+    primary:
+      - name: "Gaming"
+        reason: "Minimize processing delay"
+        priority: "high"
+      - name: "Real-time Applications"
+        reason: "Reduce TCP processing latency"
+        priority: "high"
+
+    secondary:
+      - name: "Interactive SSH"
+        reason: "Responsive remote terminal sessions"
+        priority: "medium"
+
+  impact:
+    latency: "↓↓" # High latency reduction
+    throughput: "↓" # Some throughput sacrifice
+    jitter: "↓" # Reduced processing variation
+    cpu_usage: "↑" # More frequent processing
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "echo '{enable}' > /proc/sys/net/ipv4/tcp_low_latency"
+
+    examples:
+      - description: "Enable low latency mode for gaming"
+        command: "echo '1' > /proc/sys/net/ipv4/tcp_low_latency"
+        params:
+          enable: "1"
+
+  parameters:
+    - name: "enable"
+      type: "integer"
+      description: "Enable (1) or disable (0) low latency mode"
+      default: "1"
+      valid_values: ["0", "1"]
+
+  when_to_use:
+    network_conditions:
+      - "Gaming environments"
+      - "Real-time applications"
+      - "Interactive services"
+
+    traffic_patterns:
+      - "Small, frequent packets"
+      - "Real-time gaming traffic"
+      - "Interactive applications"
+
+  monitoring:
+    - name: "latency_measurement"
+      method: "ping or application-specific latency tests"
+      expected: "Reduced latency for TCP connections"
+
+  complexity_level: "High"
+  risk_level: "High - Direct latency reduction"
+
+  anti_patterns:
+    - pattern: "Using for bulk transfer applications"
+      why: "Sacrifices throughput unnecessarily"
+      fix: "Use only for latency-sensitive applications"
+
+  llm_guidance:
+    intent_keywords:
+      ["tcp low latency", "gaming", "real-time", "latency priority"]
+    confidence_threshold: 0.9
+    suggested_combinations:
+      - ["sysctl.tcp_congestion_control"] # BBR + low latency

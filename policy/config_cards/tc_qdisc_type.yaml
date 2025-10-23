@@ -1,0 +1,109 @@
+# tc - Qdisc Type
+- id: tc.qdisc_type
+  category: tc
+  subcategory: qdisc_type
+
+  name: "Queueing Discipline Type"
+  description: "Algorithm for packet scheduling (fq_codel, pfifo_fast, SFQ)"
+
+  purpose: |
+    Selects the queueing discipline algorithm that determines how packets are
+    scheduled and processed. fq_codel (Fair Queueing with Controlled Delay)
+    improves latency by using flow-aware fair queueing with controlled delay.
+
+  use_cases:
+    primary:
+      - name: "Gaming"
+        reason: "fq_codel reduces bufferbloat, improves latency"
+        priority: "high"
+      - name: "Low-latency Applications"
+        reason: "Better queue management for responsive applications"
+        priority: "high"
+
+    secondary:
+      - name: "Variable Connections"
+        reason: "Adapts well to DSL/cable/wifi with varying conditions"
+        priority: "medium"
+
+  impact:
+    latency: "↓↓↓" # Very high reduction with fq_codel
+    throughput: "~" # Neutral
+    jitter: "↓↓" # High reduction
+    cpu_usage: "↑" # More sophisticated processing
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "tc qdisc add dev {interface} parent {parent_id} {qdisc_type} {params}"
+
+    examples:
+      - description: "Add fq_codel qdisc for gaming optimization"
+        command: "tc qdisc add dev eth0 parent 1:10 fq_codel"
+        params:
+          interface: "eth0"
+          parent_id: "1:10"
+          qdisc_type: "fq_codel"
+
+      - description: "Add fq_codel with bandwidth limit"
+        command: "tc qdisc add dev eth0 parent 1:10 fq_codel limit 1000 flows 1024 target 5ms"
+        params:
+          qdisc_type: "fq_codel"
+          limit: "1000"
+          flows: "1024"
+          target: "5ms"
+
+  parameters:
+    - name: "qdisc_type"
+      type: "string"
+      description: "Queueing discipline algorithm"
+      default: "fq_codel"
+      valid_values: ["fq_codel", "fq", "pfifo_fast", "sfq", "htb"]
+
+    - name: "limit"
+      type: "integer"
+      description: "Maximum number of packets in queue"
+      default: "10240"
+      examples: ["1000", "5000", "10240"]
+
+  when_to_use:
+    network_conditions:
+      - "Gaming and low-latency requirements"
+      - "Variable bandwidth connections (DSL/cable/wifi)"
+      - "Bufferbloat problems"
+
+    traffic_patterns:
+      - "Mixed interactive and bulk traffic"
+      - "Real-time applications"
+      - "Web browsing with responsiveness requirements"
+
+  monitoring:
+    - name: "queue_statistics"
+      method: "tc -s qdisc show dev eth0"
+      expected: "Low drop rates and controlled latency"
+
+    - name: "bufferbloat_test"
+      method: "dslreports.com speed test or similar"
+      expected: "Improved bufferbloat grades (A/B vs C/D/F)"
+
+  complexity_level: "Very High"
+  risk_level: "Very High - Affects queuing delay"
+
+  anti_patterns:
+    - pattern: "Using pfifo_fast for gaming"
+      why: "Simple FIFO doesn't address bufferbloat or provide fairness"
+      fix: "Use fq_codel for latency-sensitive applications"
+
+    - pattern: "Not tuning parameters"
+      why: "Default parameters may not be optimal for specific use case"
+      fix: "Adjust target, interval, and limit based on requirements"
+
+  llm_guidance:
+    intent_keywords:
+      ["qdisc", "fq_codel", "bufferbloat", "gaming", "latency", "queue"]
+    confidence_threshold: 0.85
+    prerequisite_checks:
+      - "Verify kernel support for desired qdisc"
+      - "Check if parent class exists for leaf qdiscs"
+      - "Understand traffic patterns and requirements"
+    suggested_combinations:
+      - ["tc.htb_rate"] # Often used with HTB classes
+      - ["sysctl.default_qdisc"] # System-wide qdisc setting

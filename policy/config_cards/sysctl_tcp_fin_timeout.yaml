@@ -1,0 +1,78 @@
+# sysctl - TCP FIN Timeout
+- id: sysctl.tcp_fin_timeout
+  category: sysctl
+  subcategory: tcp_fin_timeout
+
+  name: "TCP FIN Timeout"
+  description: "Time to wait for FIN packet (seconds)"
+
+  purpose: |
+    Controls how long sockets remain in FIN_WAIT_2 state waiting for the final
+    FIN packet. Reducing this value allows faster socket reuse in high-traffic
+    environments by reducing TIME_WAIT state duration.
+
+  use_cases:
+    primary:
+      - name: "High traffic"
+        reason: "Reduce TIME_WAIT state duration"
+        priority: "high"
+      - name: "Web Servers"
+        reason: "Faster socket reuse for HTTP connections"
+        priority: "high"
+
+    secondary:
+      - name: "API Servers"
+        reason: "Handle more concurrent connections"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "↑" # More available sockets
+    jitter: "~" # Neutral
+    cpu_usage: "↓" # Less connection tracking overhead
+    security: "↓" # Slightly reduced connection reliability
+
+  configuration:
+    command_template: "echo '{timeout}' > /proc/sys/net/ipv4/tcp_fin_timeout"
+
+    examples:
+      - description: "Reduce FIN timeout to 15 seconds"
+        command: "echo '15' > /proc/sys/net/ipv4/tcp_fin_timeout"
+        params:
+          timeout: "15"
+
+  parameters:
+    - name: "timeout"
+      type: "integer"
+      description: "FIN timeout in seconds"
+      default: "15"
+      examples: ["15", "30", "60"]
+
+  when_to_use:
+    network_conditions:
+      - "High connection turnover"
+      - "Limited socket resources"
+      - "Web server environments"
+
+    traffic_patterns:
+      - "Many short-lived connections"
+      - "HTTP request/response patterns"
+      - "High connection rates"
+
+  monitoring:
+    - name: "time_wait_sockets"
+      method: "ss -tan | grep TIME_WAIT | wc -l"
+      expected: "Reduced TIME_WAIT socket count"
+
+  complexity_level: "Medium"
+  risk_level: "Medium - Faster socket reuse"
+
+  anti_patterns:
+    - pattern: "Setting too low (< 10 seconds)"
+      why: "May cause connection reliability issues"
+      fix: "Use 15-30 seconds for most applications"
+
+  llm_guidance:
+    intent_keywords:
+      ["fin timeout", "socket reuse", "high traffic", "time_wait"]
+    confidence_threshold: 0.8

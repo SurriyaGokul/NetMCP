@@ -1,0 +1,73 @@
+# tc - HTB Ceil
+- id: tc.htb_ceil
+  category: tc
+  subcategory: htb_ceil
+
+  name: "HTB Ceil (Bandwidth Ceiling)"
+  description: "Maximum bandwidth a class can borrow"
+
+  purpose: |
+    Sets the maximum bandwidth ceiling that an HTB class can borrow from its parent
+    when extra bandwidth is available. Classes can burst up to this limit but not beyond the
+    specified limit while maintaining overall bandwidth control.
+
+  use_cases:
+    primary:
+      - name: "Streaming"
+        reason: "Allow video to burst up to limit"
+        priority: "high"
+      - name: "Bulk Downloads"
+        reason: "Control maximum bandwidth usage"
+        priority: "high"
+
+    secondary:
+      - name: "Background Tasks"
+        reason: "Limit but allow bursting when network is idle"
+        priority: "medium"
+
+  impact:
+    latency: "↓" # Better control prevents congestion
+    throughput: "~" # Neutral overall, controls bursts
+    jitter: "↓" # More predictable bandwidth usage
+    cpu_usage: "↑" # HTB processing overhead
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "tc class add dev {interface} parent {parent_id} classid {class_id} htb rate {rate} ceil {ceil}"
+
+    examples:
+      - description: "Create class with 50Mbps rate, 95Mbps ceiling"
+        command: "tc class add dev eth0 parent 1:1 classid 1:10 htb rate 50mbit ceil 95mbit"
+        params:
+          interface: "eth0"
+          rate: "50mbit"
+          ceil: "95mbit"
+
+  parameters:
+    - name: "ceil"
+      type: "string"
+      description: "Maximum bandwidth ceiling"
+      default: "95mbit"
+      examples: ["100mbit", "500mbit", "1gbit"]
+
+  when_to_use:
+    network_conditions:
+      - "Bandwidth borrowing scenarios"
+      - "Burst traffic management"
+      - "Hierarchical bandwidth allocation"
+
+  monitoring:
+    - name: "class_statistics"
+      method: "tc -s class show dev eth0"
+      expected: "Ceiling limits respected during bursts"
+
+  complexity_level: "High"
+  risk_level: "High - Controls burst capacity"
+
+  anti_patterns:
+    - pattern: "Setting ceil lower than rate"
+      why: "Ceiling must be >= guaranteed rate"
+      fix: "Set ceil ≥ rate value"
+
+  llm_guidance:
+    intent_keywords: ["htb", "bandwidth ceiling", "burst", "streaming", "qos"]

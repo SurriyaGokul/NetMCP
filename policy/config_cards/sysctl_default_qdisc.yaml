@@ -1,0 +1,76 @@
+# sysctl - Default Qdisc
+- id: sysctl.default_qdisc
+  category: sysctl
+  subcategory: default_qdisc
+
+  name: "Default Qdisc"
+  description: "Default queueing discipline for network interfaces"
+
+  purpose: |
+    Sets the default queueing discipline used by new network interfaces.
+    Using 'fq' (Fair Queue) reduces bufferbloat and works optimally with
+    BBR congestion control for gaming and real-time applications.
+
+  use_cases:
+    primary:
+      - name: "Gaming"
+        reason: "fq reduces bufferbloat with BBR"
+        priority: "high"
+      - name: "System-wide Optimization"
+        reason: "Apply optimal qdisc to all interfaces"
+        priority: "high"
+
+    secondary:
+      - name: "Real-time Applications"
+        reason: "Better overall network responsiveness"
+        priority: "medium"
+
+  impact:
+    latency: "↓↓" # High reduction with fq
+    throughput: "↑" # Better utilization
+    jitter: "↓↓" # Significant improvement
+    cpu_usage: "↑" # More sophisticated scheduling
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "echo '{qdisc}' > /proc/sys/net/core/default_qdisc"
+
+    examples:
+      - description: "Set fq as default qdisc for BBR optimization"
+        command: "echo 'fq' > /proc/sys/net/core/default_qdisc"
+        params:
+          qdisc: "fq"
+
+  parameters:
+    - name: "qdisc"
+      type: "string"
+      description: "Default queueing discipline"
+      default: "fq"
+      valid_values: ["fq", "fq_codel", "pfifo_fast", "mq"]
+
+  when_to_use:
+    network_conditions:
+      - "Gaming systems"
+      - "Real-time applications"
+      - "Modern high-speed networks"
+
+    traffic_patterns:
+      - "Mixed traffic with latency requirements"
+      - "BBR congestion control usage"
+      - "System-wide optimization"
+
+  monitoring:
+    - name: "active_qdisc"
+      method: "tc qdisc show | grep qdisc"
+      expected: "Interfaces using configured default qdisc"
+
+  complexity_level: "High"
+  risk_level: "High - Works with BBR congestion control"
+
+  anti_patterns:
+    - pattern: "Using pfifo_fast with BBR"
+      why: "BBR works best with fair queueing disciplines"
+      fix: "Use fq or fq_codel with BBR"
+
+  llm_guidance:
+    intent_keywords: ["default qdisc", "fq", "bbr", "gaming", "bufferbloat"]

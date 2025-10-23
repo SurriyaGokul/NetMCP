@@ -1,0 +1,130 @@
+# sysctl - TCP Window Scaling
+- id: sysctl.tcp_window_scaling
+  category: sysctl
+  subcategory: tcp_performance
+
+  name: "TCP Window Scaling"
+  description: "Enable TCP window scaling for large receive windows"
+
+  purpose: |
+    Enables TCP window scaling (RFC 1323) which allows TCP to use receive
+    windows larger than 65535 bytes. This is essential for high-bandwidth
+    or high-latency networks where the bandwidth-delay product exceeds 64KB.
+    Without window scaling, TCP throughput is severely limited regardless
+    of buffer sizes.
+
+  use_cases:
+    primary:
+      - name: "High-Bandwidth Networks"
+        reason: "Enable full utilization of fast network links"
+        priority: "high"
+      - name: "High-Latency Networks"
+        reason: "Overcome throughput limitations on long-distance links"
+        priority: "high"
+
+    secondary:
+      - name: "Large Buffer Utilization"
+        reason: "Allow configured large buffers to be effectively used"
+        priority: "high"
+      - name: "Modern Network Compatibility"
+        reason: "Enable modern TCP features and optimizations"
+        priority: "medium"
+
+  impact:
+    max_throughput: "↑↑↑" # Critical for high-performance networks
+    bandwidth_utilization: "↑↑↑" # Allows full link utilization
+    latency: "~" # No significant impact on latency
+    compatibility: "↑" # Required for modern TCP features
+    cpu_usage: "~" # Minimal overhead
+
+  configuration:
+    command_template: "sysctl -w net.ipv4.tcp_window_scaling={value}"
+
+    examples:
+      - description: "Enable window scaling (recommended)"
+        command: "sysctl -w net.ipv4.tcp_window_scaling=1"
+        params:
+          value: 1
+        use_case: "Standard configuration for modern networks"
+
+      - description: "Disable window scaling (legacy compatibility)"
+        command: "sysctl -w net.ipv4.tcp_window_scaling=0"
+        params:
+          value: 0
+        use_case: "Only for compatibility with very old systems"
+
+  parameters:
+    - name: "value"
+      type: "integer"
+      description: "Enable (1) or disable (0) TCP window scaling"
+      default: 1
+      examples: [0, 1]
+
+  when_to_use:
+    network_conditions:
+      - "High-bandwidth networks (>10Mbps)"
+      - "High-latency networks (>10ms RTT)"
+      - "Any network where BDP > 64KB"
+      - "Modern network environments"
+
+    traffic_patterns:
+      - "Large file transfers"
+      - "Streaming applications"
+      - "Any high-throughput application"
+      - "Long-distance communications"
+
+  monitoring:
+    - name: "window_scaling_status"
+      method: "sysctl net.ipv4.tcp_window_scaling"
+      expected: "Should be 1 for modern networks"
+
+    - name: "connection_window_sizes"
+      method: "ss -i | grep -E 'wscale|rcv_space'"
+      expected: "Window scale factors > 0 for high-performance connections"
+
+    - name: "throughput_validation"
+      method: "iperf3 -c target_host -t 30"
+      expected: "Throughput should scale with available bandwidth"
+
+    - name: "bandwidth_delay_product"
+      method: "Calculate: bandwidth_mbps × rtt_ms × 1000 / 8"
+      expected: "If BDP > 65535, window scaling is essential"
+
+  complexity_level: "Low"
+  risk_level: "Very Low"
+
+  anti_patterns:
+    - pattern: "Disabling window scaling on modern networks"
+      why: "Severely limits TCP throughput potential"
+      fix: "Enable window scaling unless absolutely required for legacy compatibility"
+
+    - pattern: "Enabling large buffers without window scaling"
+      why: "Large buffers cannot be utilized without window scaling"
+      fix: "Always enable window scaling when using buffers > 64KB"
+
+    - pattern: "Not understanding bandwidth-delay product impact"
+      why: "May not realize when window scaling is critical"
+      fix: "Calculate BDP = bandwidth × RTT; if > 64KB, window scaling is essential"
+
+    - pattern: "Assuming all systems support window scaling"
+      why: "Very old systems might not support this feature"
+      fix: "Test compatibility with oldest systems in environment"
+
+  llm_guidance:
+    intent_keywords:
+      [
+        "window",
+        "scaling",
+        "tcp",
+        "throughput",
+        "bandwidth",
+        "high-performance",
+      ]
+    confidence_threshold: 0.95
+    prerequisite_checks:
+      - "Calculate bandwidth-delay product for target networks"
+      - "Verify all systems in environment support window scaling"
+      - "Confirm large buffer configurations are present"
+    suggested_combinations:
+      - ["sysctl.tcp_rmem", "sysctl.tcp_wmem"] # Large buffers require window scaling
+      - ["sysctl.rmem_max", "sysctl.wmem_max"] # System limits must support large windows

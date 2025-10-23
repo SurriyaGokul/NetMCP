@@ -1,0 +1,102 @@
+# tc - HTB Priority
+- id: tc.htb_priority
+  category: tc
+  subcategory: htb_priority
+
+  name: "HTB Priority"
+  description: "Priority value for traffic classes (lower = higher priority)"
+
+  purpose: |
+    Sets the priority value for HTB traffic classes where lower numerical values
+    indicate higher priority. This is crucial for latency-sensitive applications
+    like gaming that need immediate packet processing.
+
+  use_cases:
+    primary:
+      - name: "Gaming"
+        reason: "Set gaming traffic to priority 1, bulk to priority 3"
+        priority: "high"
+      - name: "VoIP/Video Calls"
+        reason: "Ensure real-time traffic gets immediate processing"
+        priority: "high"
+
+    secondary:
+      - name: "Interactive Applications"
+        reason: "Reduce latency for user-facing applications"
+        priority: "medium"
+
+  impact:
+    latency: "↓↓↓" # Very high reduction for high-priority classes
+    throughput: "~" # Neutral overall
+    jitter: "↓↓" # High reduction for prioritized traffic
+    cpu_usage: "↑" # Priority scheduling overhead
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "tc class add dev {interface} parent {parent_id} classid {class_id} htb rate {rate} prio {priority}"
+
+    examples:
+      - description: "Create high-priority gaming class"
+        command: "tc class add dev eth0 parent 1:1 classid 1:10 htb rate 50mbit prio 1"
+        params:
+          interface: "eth0"
+          parent_id: "1:1"
+          class_id: "1:10"
+          rate: "50mbit"
+          priority: "1"
+
+      - description: "Create low-priority bulk transfer class"
+        command: "tc class add dev eth0 parent 1:1 classid 1:30 htb rate 20mbit prio 7"
+        params:
+          priority: "7"
+
+  parameters:
+    - name: "priority"
+      type: "integer"
+      description: "Priority value (lower = higher priority)"
+      default: "3"
+      valid_values: ["1", "2", "3", "4", "5", "6", "7"]
+
+  when_to_use:
+    network_conditions:
+      - "Mixed traffic with different latency requirements"
+      - "Gaming and real-time applications present"
+      - "Need to prevent bulk traffic from affecting interactive traffic"
+
+    traffic_patterns:
+      - "Gaming traffic requiring immediate processing"
+      - "VoIP and video conferencing"
+      - "Interactive web applications"
+
+  monitoring:
+    - name: "priority_scheduling"
+      method: "tc -s class show dev eth0"
+      expected: "Higher priority classes get precedence during congestion"
+
+    - name: "latency_measurement"
+      method: "ping or application-specific latency tests"
+      expected: "Lower latency for high-priority traffic"
+
+  complexity_level: "Very High"
+  risk_level: "Very High - Critical for latency"
+
+  anti_patterns:
+    - pattern: "All classes with same priority"
+      why: "No effective traffic differentiation"
+      fix: "Assign different priorities based on application requirements"
+
+    - pattern: "Too many high-priority classes"
+      why: "Defeats the purpose of prioritization"
+      fix: "Reserve priority 1-2 for truly critical traffic only"
+
+  llm_guidance:
+    intent_keywords:
+      ["htb priority", "gaming", "latency", "traffic class", "qos"]
+    confidence_threshold: 0.9
+    prerequisite_checks:
+      - "Verify HTB qdisc is configured"
+      - "Ensure parent class exists"
+      - "Check that rate is also specified"
+    suggested_combinations:
+      - ["tc.htb_rate"] # Priority needs bandwidth allocation
+      - ["tc.htb_ceil"] # Often combined with ceiling

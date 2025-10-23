@@ -1,0 +1,97 @@
+# iptables - NAT
+- id: iptables.nat
+  category: iptables
+  subcategory: nat
+
+  name: "NAT (SNAT/MASQUERADE)"
+  description: "Network address translation for outbound traffic"
+
+  purpose: |
+    Performs network address translation (NAT) for outbound traffic, enabling
+    internet connection sharing and hiding internal network topology behind a
+    public interface address.
+
+  use_cases:
+    primary:
+      - name: "Router/Gateway"
+        reason: "Enable internet sharing for internal network"
+        priority: "high"
+      - name: "Internet Connection Sharing"
+        reason: "Share single internet connection among multiple devices"
+        priority: "high"
+
+    secondary:
+      - name: "Network Security"
+        reason: "Hide internal network structure"
+        priority: "medium"
+
+  impact:
+    latency: "↑" # Slight increase due to translation
+    throughput: "~" # Neutral
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # NAT processing overhead
+    security: "↑" # Hides internal network structure
+
+  configuration:
+    command_template: "iptables -t nat -A POSTROUTING -o {interface} -j MASQUERADE"
+
+    examples:
+      - description: "Enable NAT masquerading on eth0"
+        command: "iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
+        params:
+          interface: "eth0"
+
+      - description: "NAT for specific subnet"
+        command: "iptables -t nat -A POSTROUTING -s 192.168.1.0/24 -o eth0 -j MASQUERADE"
+        params:
+          interface: "eth0"
+          source: "192.168.1.0/24"
+
+  parameters:
+    - name: "interface"
+      type: "string"
+      description: "Outbound network interface"
+      default: "eth0"
+      examples: ["eth0", "wlan0", "ppp0"]
+
+  when_to_use:
+    network_conditions:
+      - "Router/gateway configurations"
+      - "Internet connection sharing"
+      - "VPN server setups"
+
+    traffic_patterns:
+      - "Outbound internet access"
+      - "Multiple internal clients"
+      - "Single public IP scenarios"
+
+  monitoring:
+    - name: "nat_table_rules"
+      method: "iptables -t nat -L -n -v"
+      expected: "MASQUERADE rules present and active"
+
+    - name: "connection_tracking"
+      method: "cat /proc/net/nf_conntrack | grep ASSURED"
+      expected: "Active translated connections visible"
+
+  complexity_level: "Low-Medium"
+  risk_level: "Low-Medium - Enables connectivity"
+
+  anti_patterns:
+    - pattern: "Not enabling IP forwarding"
+      why: "NAT requires packet forwarding between interfaces"
+      fix: "Enable with: echo 1 > /proc/sys/net/ipv4/ip_forward"
+
+    - pattern: "Using SNAT without specifying source"
+      why: "Can cause conflicts with multiple source networks"
+      fix: "Use specific source networks or MASQUERADE"
+
+  llm_guidance:
+    intent_keywords:
+      ["nat", "masquerade", "internet sharing", "gateway", "router"]
+    confidence_threshold: 0.85
+    prerequisite_checks:
+      - "Verify IP forwarding is enabled"
+      - "Check interface names and status"
+    suggested_combinations:
+      - ["sysctl.ip_forward"] # Required for NAT functionality

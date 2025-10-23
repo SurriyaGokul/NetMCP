@@ -1,0 +1,102 @@
+ # iptables Rate Limiting
+  - id: iptables.rate_limiting
+    category: iptables
+    subcategory: rate_limiting
+
+    name: "Rate Limiting"
+    description: "Rate limit packet acceptance"
+
+    purpose: |
+      Controls bandwidth usage by limiting the rate at which packets are accepted,
+      providing smooth traffic flow and preventing burst congestion.
+
+    use_cases:
+      primary:
+        - name: "Streaming"
+          reason: "Smooth traffic flow, prevent burst congestion"
+          priority: "high"
+
+      secondary:
+        - name: "Bandwidth Management"
+          reason: "Controls overall network utilization"
+          priority: "medium"
+
+    impact:
+      latency: "~" # Neutral
+      throughput: "↓" # Controlled reduction
+      jitter: "↓" # Reduction due to smoother flow
+      cpu_usage: "↑" # Slight increase for rate calculation
+      security: "↑" # Improved protection against floods
+
+    configuration:
+      command_template: "iptables -A {chain} -m limit --limit {rate} -j {action}"
+
+      examples:
+        - description: "Rate limit packet acceptance to 150/second"
+          command: "iptables -A INPUT -m limit --limit 150/second -j ACCEPT"
+          params:
+            chain: "INPUT"
+            rate: "150/second"
+            action: "ACCEPT"
+
+    parameters:
+      - name: "limit"
+        type: "string"
+        description: "Rate limit in packets/second"
+        default: "150/second"
+        valid_values:
+          [
+            "1/second",
+            "10/second",
+            "50/second",
+            "100/second",
+            "150/second",
+            "200/second",
+          ]
+
+    when_to_use:
+      network_conditions:
+        - "High traffic environments"
+        - "DDoS protection scenarios"
+        - "Bandwidth-constrained links"
+
+      traffic_patterns:
+        - "Bursty traffic that needs smoothing"
+        - "Protection against flood attacks"
+
+    monitoring:
+      - name: "packet_drop_rate"
+        method: "iptables -L -v -n"
+        expected: "Packets dropped when limit exceeded"
+
+      - name: "traffic_smoothness"
+        method: "Network monitoring tools"
+        expected: "More consistent packet flow"
+
+    complexity_level: "Medium"
+    risk_level: "Medium - Controls bandwidth usage"
+
+    anti_patterns:
+      - pattern: "Setting limit too low"
+        why: "May drop legitimate traffic"
+        fix: "Monitor and adjust based on traffic patterns"
+
+      - pattern: "Not considering burst capacity"
+        why: "May cause unnecessary packet drops during normal bursts"
+        fix: "Use --limit-burst parameter for burst allowance"
+
+    llm_guidance:
+      intent_keywords:
+        [
+          "rate limit",
+          "bandwidth control",
+          "flood protection",
+          "traffic shaping",
+        ]
+      confidence_threshold: 0.9
+      prerequisite_checks:
+        - "Ensure iptables limit module is available"
+        - "Monitor baseline traffic rates before applying"
+
+      suggested_combinations:
+        - ["iptables.connection_limiting", "fail2ban"] # For comprehensive protection

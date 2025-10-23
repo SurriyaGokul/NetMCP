@@ -1,0 +1,110 @@
+# tc - HTB Rate
+- id: tc.htb_rate
+  category: tc
+  subcategory: htb_rate
+
+  name: "HTB Rate (Bandwidth Guarantee)"
+  description: "Guaranteed bandwidth for traffic class"
+
+  purpose: |
+    Sets the guaranteed bandwidth rate for an HTB traffic class. This ensures
+    that the class will always have access to at least this amount of bandwidth when
+    available, providing consistent performance even under network congestion.
+
+  use_cases:
+    primary:
+      - name: "Gaming"
+        reason: "Guarantee minimum bandwidth for game traffic"
+        priority: "high"
+      - name: "VoIP/Video Calls"
+        reason: "Ensure consistent quality for real-time communications"
+        priority: "high"
+
+    secondary:
+      - name: "Critical Applications"
+        reason: "Protect important application traffic"
+        priority: "medium"
+
+  impact:
+    latency: "↓" # Better guarantees reduce congestion latency
+    throughput: "↑" # Guaranteed bandwidth allocation
+    jitter: "↓" # More consistent performance
+    cpu_usage: "↑" # HTB processing overhead
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "tc class add dev {interface} parent {parent_id} classid {class_id} htb rate {rate}"
+
+    examples:
+      - description: "Create gaming traffic class with 50Mbps guarantee"
+        command: "tc class add dev eth0 parent 1:1 classid 1:10 htb rate 50mbit"
+        params:
+          interface: "eth0"
+          parent_id: "1:1"
+          class_id: "1:10"
+          rate: "50mbit"
+
+      - description: "Create VoIP class with 5Mbps guarantee"
+        command: "tc class add dev eth0 parent 1:1 classid 1:20 htb rate 5mbit"
+        params:
+          interface: "eth0"
+          parent_id: "1:1"
+          class_id: "1:20"
+          rate: "5mbit"
+
+  parameters:
+    - name: "rate"
+      type: "string"
+      description: "Guaranteed bandwidth rate"
+      default: "50mbit"
+      examples: ["10mbit", "50mbit", "100mbit", "1gbit"]
+
+    - name: "interface"
+      type: "string"
+      description: "Network interface"
+      default: "eth0"
+      examples: ["eth0", "wlan0", "enp0s3"]
+
+  when_to_use:
+    network_conditions:
+      - "Bandwidth-constrained environments"
+      - "Multiple competing applications"
+      - "Quality of Service requirements"
+
+    traffic_patterns:
+      - "Gaming traffic requiring consistency"
+      - "Real-time communications"
+      - "Critical business applications"
+
+  monitoring:
+    - name: "rate_guarantee"
+      method: "tc -s class show dev eth0"
+      expected: "Class shows guaranteed rate allocation"
+
+    - name: "bandwidth_utilization"
+      method: "tc -s -d class show dev eth0 classid 1:10"
+      expected: "Rate guarantee being utilized appropriately"
+
+  complexity_level: "Very High"
+  risk_level: "Very High - Direct bandwidth control"
+
+  anti_patterns:
+    - pattern: "Over-committing guaranteed rates"
+      why: "Total guarantees exceed available bandwidth"
+      fix: "Ensure sum of all rate guarantees ≤ total bandwidth"
+
+    - pattern: "Setting rate higher than ceil"
+      why: "Rate cannot exceed ceiling value"
+      fix: "Set ceil ≥ rate or omit ceil parameter"
+
+  llm_guidance:
+    intent_keywords:
+      ["htb rate", "bandwidth guarantee", "gaming", "qos", "traffic class"]
+    confidence_threshold: 0.9
+    prerequisite_checks:
+      - "Verify HTB qdisc is configured"
+      - "Check total bandwidth allocation"
+      - "Ensure parent class exists"
+    suggested_combinations:
+      - ["tc.htb_ceil"] # Usually combined with ceiling
+      - ["tc.htb_priority"] # For traffic prioritization

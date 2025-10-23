@@ -1,0 +1,65 @@
+# sysctl - Core rmem_max
+- id: sysctl.core_rmem_max
+  category: sysctl
+  subcategory: core_buffers
+
+  name: "Core Receive Buffer Max"
+  description: "Maximum receive buffer for all protocols"
+
+  purpose: |
+    Sets the maximum receive buffer size that any socket can use. This acts as
+    an upper bound for TCP and other protocol buffers, essential for supporting
+    large TCP windows on high-bandwidth connections.
+
+  use_cases:
+    primary:
+      - name: "High-bandwidth"
+        reason: "Support large TCP windows"
+        priority: "high"
+      - name: "Server Environments"
+        reason: "Handle many high-throughput connections"
+        priority: "high"
+
+    secondary:
+      - name: "Bulk Transfers"
+        reason: "Optimize large file operations"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "↑↑" # High improvement potential
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # More memory management
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "echo '{max_buffer}' > /proc/sys/net/core/rmem_max"
+
+    examples:
+      - description: "Set maximum receive buffer to 16MB"
+        command: "echo '16777216' > /proc/sys/net/core/rmem_max"
+        params:
+          max_buffer: "16777216"
+
+      - description: "High-performance setting (32MB)"
+        command: "echo '33554432' > /proc/sys/net/core/rmem_max"
+        params:
+          max_buffer: "33554432"
+
+  parameters:
+    - name: "max_buffer"
+      type: "integer"
+      description: "Maximum receive buffer size in bytes"
+      default: "16777216"
+      examples: ["16777216", "33554432", "67108864"]
+
+  complexity_level: "High"
+  risk_level: "High - Upper bound for TCP buffers"
+
+  llm_guidance:
+    intent_keywords:
+      ["core buffer", "rmem_max", "high bandwidth", "tcp windows"]
+
+    confidence_threshold: 0.8
+    suggested_combinations:
+      - ["sysctl.tcp_rmem"] # Must be <= rmem_max

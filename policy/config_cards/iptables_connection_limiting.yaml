@@ -1,0 +1,162 @@
+# iptables Connection Limiting
+  - id: iptables.connection_limiting
+    category: iptables
+    subcategory: connection_limiting
+
+    name: "Connection Limiting per IP"
+    description: "Limit concurrent connections from a single source IP address"
+
+    purpose: |
+      Prevents resource exhaustion from DoS attacks or misbehaving clients by 
+      restricting the number of simultaneous connections per IP.
+
+    use_cases:
+      primary:
+        - name: "Server Protection"
+          reason: "Prevent connection exhaustion attacks"
+          priority: "high"
+        - name: "Fair Resource Allocation"
+          reason: "Ensure no single client monopolizes connections"
+          priority: "medium"
+
+      secondary:
+        - name: "Bandwidth Management"
+          reason: "Indirectly limits bandwidth per IP by capping connections"
+          priority: "low"
+
+    impact:
+      latency: "↑" # Slight increase (rule processing)
+      throughput: "↓" # Potential decrease for legitimate heavy users
+      jitter: "~" # Neutral
+      cpu_usage: "↑" # Additional processing per packet
+      security: "↑↑" # High security improvement
+
+    configuration:
+      command_template: "iptables -A {chain} -p {protocol} --syn --dport {port} -m connlimit --connlimit-above {limit} --connlimit-mask {mask} -j {action}"
+
+      examples:
+        - description: "Limit HTTP connections to 20 per IP"
+          command: "iptables -A INPUT -p tcp --syn --dport 80 -m connlimit --connlimit-above 20 -j REJECT"
+          params:
+            chain: "INPUT"
+            protocol: "tcp"
+            port: 80
+            limit: 20
+            action: "REJECT"
+
+        - description: "Limit SSH to 3 connections per /24 subnet"
+          command: "iptables -A INPUT -p tcp --syn --dport 22 -m connlimit --connlimit-above 3 --connlimit-mask 24 -j REJECT"
+          params:
+            chain: "INPUT"
+            protocol: "tcp"
+            port: 22
+            limit: 3
+            mask: 24
+            action: "REJECT"
+
+    parameters:
+      - name: "limit"
+        type: "integer"
+        range: "1-1000"
+        default: 20
+        description: "Maximum concurrent connections allowed"
+
+      - name: "mask"
+        type: "integer"
+        range: "0-32"
+        default: 32
+        description: "CIDR mask for grouping IPs (32=per IP, 24=per /24 subnet)"
+
+      - name: "port"
+        type: "integer"
+        range: "1-65535"
+        required: true
+        description: "Destination port to protect"
+
+      - name: "protocol"
+        type: "enum"
+        values: ["tcp", "udp"]
+        default: "tcp"
+        description: "Protocol to limit"
+
+      - name: "action"
+        type: "enum"
+        values: ["REJECT", "DROP"]
+        default: "REJECT"
+        description: "How to handle excess connections"
+
+    when_to_use:
+      - "Public-facing services (web servers, APIs)"
+      - "Under DoS/DDoS attack or high abuse"
+      - "Limited server resources need protection"
+
+    when_to_avoid:
+      - "Services behind CDN/load balancer (limits affect CDN IP)"
+      - "NAT scenarios where many users share one IP"
+      - "Gaming servers (can affect legitimate party connections)"
+
+    interactions:
+      - param: "conntrack.max"
+        note: "Each connection tracked consumes conntrack table space"
+        relationship: "dependent"
+
+      - param: "tcp.max_syn_backlog"
+        note: "Works in conjunction; both limit connection establishment"
+        relationship: "complementary"
+
+      - param: "fail2ban"
+        note: "Can be combined for dynamic IP blocking"
+        relationship: "complementary"
+
+    safe_ranges:
+      web_server: "20-100 connections"
+      ssh_server: "3-10 connections"
+      api_server: "50-200 connections"
+      gaming_server: "5-50 connections (depends on game)"
+
+    defaults:
+      limit: 20
+      mask: 32
+      action: "REJECT"
+
+    rollback:
+      command: "iptables -D {chain} -p {protocol} --syn --dport {port} -m connlimit --connlimit-above {limit} -j {action}"
+      validation: "Monitor legitimate user connection rejections"
+
+    metrics_to_monitor:
+      - name: "rejected_connections"
+        method: "iptables -L -v -n | grep connlimit"
+        alert_on: "Sudden spike in rejections"
+
+      - name: "active_connections_per_ip"
+        method: "netstat -ntu | awk '{print $5}' | cut -d: -f1 | sort | uniq -c"
+        expected: "No IPs consistently at limit"
+
+    anti_patterns:
+      - pattern: "Setting limit too low for service type"
+        why: "Blocks legitimate users (e.g., browsers open multiple connections)"
+        fix: "Adjust based on application behavior (browsers use 6-8 connections)"
+
+      - pattern: "Using with CDN or reverse proxy"
+        why: "All traffic appears from CDN IP, hitting limit quickly"
+        fix: "Use X-Forwarded-For at application layer or move limit to CDN"
+
+      - pattern: "Using --connlimit-mask 0"
+        why: "Limits ALL IPs collectively, not per-IP"
+        fix: "Use mask 32 for per-IP or 24 for per-subnet"
+
+    llm_guidance:
+      intent_keywords:
+        ["security", "dos", "protect", "limit abuse", "fair usage"]
+      confidence_threshold: 0.7
+      prerequisite_checks:
+        - "Verify not behind NAT or CDN"
+        - "Check typical connection pattern for service"
+
+      suggested_combinations:
+        - ["iptables.rate_limiting", "fail2ban"] # For comprehensive protection
+
+      performance_vs_security_tradeoff: |
+        Higher limits = better performance for legitimate users but less protection.
+        Lower limits = stronger protection but may impact user experience.
+        Tune based on observed attack patterns vs. legitimate usage.

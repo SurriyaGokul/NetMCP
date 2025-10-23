@@ -1,0 +1,79 @@
+# sysctl - TCP SYN Cookies
+- id: sysctl.tcp_syncookies
+  category: sysctl
+  subcategory: tcp_syncookies
+
+  name: "TCP SYN Cookies"
+  description: "Enable SYN flood protection"
+
+  purpose: |
+    Enables SYN cookies which provide protection against SYN flood DoS attacks
+    by encoding connection state in the initial sequence number rather than
+    storing it in memory, preventing SYN queue exhaustion.
+
+  use_cases:
+    primary:
+      - name: "Security"
+        reason: "Protect against DoS attacks"
+        priority: "high"
+      - name: "Public Servers"
+        reason: "Essential for internet-facing services"
+        priority: "high"
+
+    secondary:
+      - name: "High-traffic Servers"
+        reason: "Prevent SYN queue exhaustion"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "~" # Neutral
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # Slight overhead for cookie generation
+    security: "↑↑" # High security improvement
+
+  configuration:
+    command_template: "echo '{enable}' > /proc/sys/net/ipv4/tcp_syncookies"
+
+    examples:
+      - description: "Enable SYN flood protection"
+        command: "echo '1' > /proc/sys/net/ipv4/tcp_syncookies"
+        params:
+          enable: "1"
+
+  parameters:
+    - name: "enable"
+      type: "integer"
+      description: "Enable (1) or disable (0) SYN cookies"
+      default: "1"
+      valid_values: ["0", "1"]
+
+  when_to_use:
+    network_conditions:
+      - "Internet-facing servers"
+      - "High-risk environments"
+      - "Public services"
+
+    traffic_patterns:
+      - "High connection rates"
+      - "Potential attack targets"
+      - "Critical services"
+
+  monitoring:
+    - name: "syncookie_usage"
+      method: "netstat -s | grep -i syncookies"
+      expected: "SYN cookies sent when under attack"
+
+  complexity_level: "Low"
+  risk_level: "Low - Security vs minimal overhead"
+
+  anti_patterns:
+    - pattern: "Disabling on public servers"
+      why: "Leaves server vulnerable to SYN flood attacks"
+      fix: "Always enable on internet-facing servers"
+
+  llm_guidance:
+    intent_keywords: ["syn cookies", "syn flood", "dos protection", "security"]
+    confidence_threshold: 0.9
+    suggested_combinations:
+      - ["sysctl.tcp_max_syn_backlog"] # Related to SYN handling

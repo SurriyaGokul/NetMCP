@@ -1,0 +1,101 @@
+# iptables - Connection Tracking Size
+- id: iptables.connection_tracking_size
+  category: iptables
+  subcategory: connection_tracking_size
+
+  name: "Connection Tracking Size"
+  description: "Maximum number of tracked connections"
+
+  purpose: |
+    Sets the maximum number of connections that can be tracked simultaneously
+    by the netfilter connection tracking system, supporting high traffic scenarios
+    with more simultaneous connections.
+
+  use_cases:
+    primary:
+      - name: "High Traffic"
+        reason: "Support more simultaneous connections"
+        priority: "high"
+      - name: "Server Environments"
+        reason: "Handle many concurrent client connections"
+        priority: "high"
+
+    secondary:
+      - name: "NAT Gateways"
+        reason: "Track connections for multiple internal clients"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "↑" # Improved by not dropping connections
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # Higher memory usage
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "echo {max_connections} > /proc/sys/net/ipv4/ip_conntrack_max"
+
+    examples:
+      - description: "Set maximum tracked connections to 8192"
+        command: "echo 8192 > /proc/sys/net/ipv4/ip_conntrack_max"
+        params:
+          max_connections: "8192"
+
+      - description: "Set higher limit for busy servers"
+        command: "echo 16384 > /proc/sys/net/ipv4/ip_conntrack_max"
+        params:
+          max_connections: "16384"
+
+  parameters:
+    - name: "max_connections"
+      type: "integer"
+      description: "Maximum number of tracked connections"
+      default: "8192"
+      valid_values: ["4096", "8192", "16384", "32768", "65536"]
+
+  when_to_use:
+    network_conditions:
+      - "High connection count environments"
+      - "Server with many simultaneous clients"
+      - "NAT gateway scenarios"
+
+    traffic_patterns:
+      - "Many short-lived connections"
+      - "Long-lived connection pools"
+      - "P2P applications"
+
+  monitoring:
+    - name: "connection_tracking_usage"
+      method: "cat /proc/sys/net/netfilter/nf_conntrack_count && cat /proc/sys/net/netfilter/nf_conntrack_max"
+      expected: "Usage below 80% of maximum"
+
+    - name: "dropped_connections"
+      method: "dmesg | grep 'nf_conntrack: table full'"
+      expected: "No table full messages"
+
+  complexity_level: "Medium"
+  risk_level: "Medium - Memory vs capacity tradeoff"
+
+  anti_patterns:
+    - pattern: "Setting value too high without monitoring memory"
+      why: "Can cause memory exhaustion"
+      fix: "Monitor memory usage and adjust incrementally"
+
+    - pattern: "Not adjusting hash table size"
+      why: "Can cause performance degradation with high connection counts"
+      fix: "Also adjust nf_conntrack_buckets parameter"
+
+  llm_guidance:
+    intent_keywords:
+      [
+        "connection tracking",
+        "high traffic",
+        "simultaneous connections",
+        "conntrack",
+      ]
+    confidence_threshold: 0.8
+    prerequisite_checks:
+      - "Check current connection tracking usage"
+      - "Monitor available system memory"
+    suggested_combinations:
+      - ["sysctl.tcp_max_syn_backlog"] # For handling connection bursts

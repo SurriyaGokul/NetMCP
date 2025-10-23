@@ -1,0 +1,123 @@
+# iptables - Connection Tracking
+  - id: iptables.connection_tracking
+    category: iptables
+    subcategory: connection_tracking
+
+    name: "Connection State Tracking"
+    description: "Allow packets from established/related connections, bypassing further rule processing"
+
+    purpose: |
+      Reduces rule processing overhead by accepting packets from already-established 
+      connections without evaluating subsequent firewall rules.
+
+    use_cases:
+      primary:
+        - name: "Gaming"
+          reason: "Minimizes per-packet latency by skipping rule evaluation for active game sessions"
+          priority: "high"
+        - name: "Real-time Communications"
+          reason: "Reduces jitter and latency for VoIP/video calls"
+          priority: "high"
+
+      secondary:
+        - name: "General Browsing"
+          reason: "Improves responsiveness for web traffic"
+          priority: "medium"
+
+    impact:
+      latency: "↓↓" # High reduction
+      throughput: "↑" # Slight increase
+      jitter: "↓" # Reduction
+      cpu_usage: "↓" # Lower processing overhead
+      security: "~" # Neutral (assumes proper initial rules)
+
+    configuration:
+      command_template: "iptables -A {chain} -m state --state {states} -j {action}"
+
+      examples:
+        - description: "Accept established/related on INPUT"
+          command: "iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT"
+          params:
+            chain: "INPUT"
+            states: "zESTABLISHED,RELATED"
+            action: "ACCEPT"
+
+        - description: "Accept established/related on FORWARD (for routers)"
+          command: "iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT"
+          params:
+            chain: "FORWARD"
+            states: "ESTABLISHED,RELATED"
+            action: "ACCEPT"
+
+    parameters:
+      - name: "chain"
+        type: "enum"
+        values: ["INPUT", "OUTPUT", "FORWARD"]
+        default: "INPUT"
+        description: "Which iptables chain to apply the rule"
+
+      - name: "states"
+        type: "list"
+        values: ["NEW", "ESTABLISHED", "RELATED", "INVALID"]
+        default: ["ESTABLISHED", "RELATED"]
+        description: "Connection states to match"
+
+      - name: "action"
+        type: "enum"
+        values: ["ACCEPT", "DROP", "REJECT"]
+        default: "ACCEPT"
+        description: "Action to take on matched packets"
+
+    when_to_use:
+      - "High packet rate scenarios (gaming, streaming)"
+      - "When firewall has many rules causing processing delays"
+      - "Systems with limited CPU resources"
+
+    when_to_avoid:
+      - "Deep packet inspection is required on all traffic"
+      - "Strict security policies require per-packet analysis"
+
+    interactions:
+      - param: "iptables.rule_order"
+        note: "Must be placed early in chain (ideally first) for maximum benefit"
+        relationship: "complementary"
+
+      - param: "conntrack.max"
+        note: "Ensure conntrack table is sized appropriately for connection volume"
+        relationship: "dependent"
+
+    safe_ranges:
+      position_in_chain: "1-5" # Should be in first few rules
+
+    rollback:
+      command: "iptables -D {chain} -m state --state {states} -j {action}"
+      validation: "Check packet drop rate doesn't increase"
+
+    metrics_to_monitor:
+      - name: "conntrack_entries"
+        path: "/proc/net/nf_conntrack"
+        threshold: "< 80% of conntrack_max"
+
+      - name: "packet_processing_time"
+        method: "iptables -L -v -n --line-numbers"
+        expected: "Lower packet counter on subsequent rules"
+
+    anti_patterns:
+      - pattern: "Placing rule late in chain"
+        why: "Defeats purpose; packets already processed by earlier rules"
+        fix: "Move to top of chain"
+
+      - pattern: "Using with -j LOG before ACCEPT"
+        why: "Adds logging overhead, negating performance benefit"
+        fix: "Remove logging or use separate rule for specific debugging"
+
+    llm_guidance:
+      intent_keywords:
+        ["gaming", "low latency", "reduce overhead", "performance"]
+      confidence_threshold: 0.8
+      prerequisite_checks:
+        - "Ensure iptables is in use (not nftables)"
+        - "Verify conntrack module is loaded"
+
+      suggested_combinations:
+        - ["qdisc.fq_codel", "tcp.bbr"] # For gaming optimization

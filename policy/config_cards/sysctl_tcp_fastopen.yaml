@@ -1,0 +1,80 @@
+# sysctl - TCP Fast Open
+- id: sysctl.tcp_fastopen
+  category: sysctl
+  subcategory: tcp_fastopen
+
+  name: "TCP Fast Open"
+  description: "Enable TCP Fast Open (reduce handshake latency)"
+
+  purpose: |
+    Enables TCP Fast Open which allows data to be sent during the initial
+    TCP handshake, reducing connection establishment latency for subsequent
+    connections to the same server.
+
+  use_cases:
+    primary:
+      - name: "Gaming"
+        reason: "Faster connection establishment"
+        priority: "high"
+      - name: "Web Servers"
+        reason: "Reduce HTTP connection latency"
+        priority: "high"
+
+    secondary:
+      - name: "API Services"
+        reason: "Faster client connections"
+        priority: "medium"
+
+  impact:
+    latency: "↓" # Reduces initial connection latency
+    throughput: "~" # Neutral
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # Slight overhead for TFO processing
+    security: "↓" # Potential for replay attacks
+
+  configuration:
+    command_template: "echo '{value}' > /proc/sys/net/ipv4/tcp_fastopen"
+
+    examples:
+      - description: "Enable TCP Fast Open (client and server)"
+        command: "echo '3' > /proc/sys/net/ipv4/tcp_fastopen"
+        params:
+          value: "3"
+
+  parameters:
+    - name: "value"
+      type: "integer"
+      description: "TCP Fast Open mode (1=client, 2=server, 3=both)"
+      default: "3"
+      valid_values: ["0", "1", "2", "3"]
+
+  when_to_use:
+    network_conditions:
+      - "High connection establishment overhead"
+      - "Many short-lived connections"
+      - "Gaming and real-time applications"
+
+    traffic_patterns:
+      - "Web browsing with many requests"
+      - "API calls with frequent connections"
+      - "Gaming connection establishment"
+
+  monitoring:
+    - name: "tfo_usage"
+      method: "netstat -s | grep -i 'fast open'"
+      expected: "TFO connections successfully established"
+
+  complexity_level: "Medium"
+  risk_level: "Medium - Reduces initial latency"
+
+  anti_patterns:
+    - pattern: "Enabling on untrusted networks"
+      why: "Potential security risk with replay attacks"
+      fix: "Use only on trusted networks or with additional security"
+
+  llm_guidance:
+    intent_keywords:
+      ["tcp fast open", "connection latency", "gaming", "handshake"]
+    confidence_threshold: 0.8
+    suggested_combinations:
+      - ["sysctl.tcp_low_latency"] # For gaming optimization

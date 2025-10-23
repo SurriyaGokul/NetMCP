@@ -1,0 +1,134 @@
+# tc - Default Class
+- id: tc.default_class
+  category: tc
+  subcategory: default_class
+
+  name: "HTB Default Class Configuration"
+  description: "Set default class for unclassified traffic in HTB qdisc"
+
+  purpose: |
+    Configures the default class for traffic that doesn't match any specific
+    filters in an HTB (Hierarchical Token Bucket) queueing discipline.
+    Ensures all traffic has a fallback classification and prevents uncontrolled
+    bandwidth usage by unclassified packets.
+
+  use_cases:
+    primary:
+      - name: "Traffic Management"
+        reason: "Ensure all traffic is classified and controlled"
+        priority: "high"
+      - name: "QoS Implementation"
+        reason: "Provide fallback classification for unknown traffic"
+        priority: "high"
+
+    secondary:
+      - name: "Bandwidth Control"
+        reason: "Prevent unclassified traffic from consuming all bandwidth"
+        priority: "medium"
+
+  impact:
+    throughput: "~" # Neutral, just classification
+    latency: "~" # Minimal processing overhead
+    bandwidth_control: "↑↑" # Better control over unclassified traffic
+    qos_effectiveness: "↑↑" # Ensures comprehensive traffic management
+    cpu_usage: "↑" # Slight classification overhead
+
+  configuration:
+    command_template: "tc qdisc add dev {interface} root handle 1: htb default {class_id}"
+
+    examples:
+      - description: "Set default class for basic rate limiting"
+        command: |
+          tc qdisc add dev eth0 root handle 1: htb default 30
+          tc class add dev eth0 parent 1: classid 1:1 htb rate 100mbit
+          tc class add dev eth0 parent 1:1 classid 1:30 htb rate 10mbit ceil 20mbit
+        params:
+          interface: "eth0"
+          default_class: "30"
+          fallback_rate: "10mbit"
+          fallback_ceil: "20mbit"
+
+      - description: "Corporate network with guest traffic default"
+        command: |
+          tc qdisc add dev eth0 root handle 1: htb default 40
+          tc class add dev eth0 parent 1: classid 1:1 htb rate 1gbit
+          tc class add dev eth0 parent 1:1 classid 1:40 htb rate 1mbit ceil 5mbit
+        params:
+          default_class: "40"
+          guest_rate: "1mbit"
+          guest_ceil: "5mbit"
+
+  parameters:
+    - name: "default_class_id"
+      type: "integer"
+      description: "Class ID for unclassified traffic"
+      default: "30"
+      examples: ["10", "20", "30", "40", "50"]
+
+    - name: "fallback_rate"
+      type: "string"
+      description: "Guaranteed rate for default class"
+      default: "1mbit"
+      examples: ["512kbit", "1mbit", "5mbit", "10mbit"]
+
+    - name: "fallback_ceil"
+      type: "string"
+      description: "Maximum rate for default class"
+      default: "10mbit"
+      examples: ["2mbit", "5mbit", "10mbit", "20mbit"]
+
+  when_to_use:
+    network_conditions:
+      - "Implementing comprehensive QoS"
+      - "Managing mixed traffic types"
+      - "Preventing bandwidth abuse"
+
+    traffic_patterns:
+      - "Networks with unknown/unclassified traffic"
+      - "Guest network access"
+      - "Backup/fallback traffic handling"
+
+  monitoring:
+    - name: "default_class_usage"
+      method: "tc -s class show dev eth0"
+      expected: "Monitor bytes/packets in default class"
+
+    - name: "unclassified_traffic_volume"
+      method: "tc -s class show dev eth0 | grep 'classid 1:30'"
+      expected: "Track volume of unclassified traffic"
+
+    - name: "overall_qos_effectiveness"
+      method: "Monitor application performance across all classes"
+      expected: "Consistent performance within defined limits"
+
+  complexity_level: "Medium"
+  risk_level: "Low-Medium"
+
+  anti_patterns:
+    - pattern: "No default class specified"
+      why: "Unclassified traffic bypasses HTB controls"
+      fix: "Always specify a default class in HTB configurations"
+
+    - pattern: "Default class with unlimited bandwidth"
+      why: "Defeats purpose of traffic control"
+      fix: "Set appropriate rate and ceil limits for default class"
+
+    - pattern: "Default class with higher priority than critical traffic"
+      why: "Unknown traffic gets better treatment than important traffic"
+      fix: "Assign default class lower priority and bandwidth"
+
+    - pattern: "Forgetting to create the default class"
+      why: "HTB will reject traffic if default class doesn't exist"
+      fix: "Always create the class referenced in default parameter"
+
+  llm_guidance:
+    intent_keywords:
+      ["htb", "default", "class", "unclassified", "fallback", "qos"]
+    confidence_threshold: 0.9
+    prerequisite_checks:
+      - "Verify HTB qdisc is being used"
+      - "Ensure default class is actually created"
+      - "Confirm rate/ceil values are appropriate"
+    suggested_combinations:
+      - ["tc.htb_rate", "tc.htb_ceil"] # Required for HTB class configuration
+      - ["tc.htb_priority"] # Often used together for comprehensive QoS

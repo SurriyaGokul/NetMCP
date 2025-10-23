@@ -1,0 +1,105 @@
+# tc - netem Delay
+- id: tc.netem_delay
+  category: tc
+  subcategory: netem_delay
+
+  name: "Packet Delay (Latency Simulation)"
+  description: "Add artificial delay to packets"
+
+  purpose: |
+    Adds artificial delay to network packets for testing and simulation purposes.
+    Useful for testing application behavior under different network conditions,
+    various latency scenarios, or creating controlled network environments.
+
+  use_cases:
+    primary:
+      - name: "Testing"
+        reason: "Simulate WAN conditions"
+        priority: "high"
+      - name: "Application Development"
+        reason: "Test application resilience under various latency conditions"
+        priority: "high"
+
+    secondary:
+      - name: "Network Simulation"
+        reason: "Create realistic test environments"
+        priority: "medium"
+
+  impact:
+    latency: "↑↑↑" # Intentionally increases latency
+    throughput: "~" # Neutral
+    jitter: "↑" # Can increase jitter if variance is added
+    cpu_usage: "↑" # Processing overhead
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "tc qdisc add dev {interface} root netem delay {delay} {jitter}"
+
+    examples:
+      - description: "Add 100ms delay with 20ms jitter"
+        command: "tc qdisc add dev eth0 root netem delay 100ms 20ms"
+        params:
+          interface: "eth0"
+          delay: "100ms"
+          jitter: "20ms"
+
+      - description: "Simulate satellite connection"
+        command: "tc qdisc add dev eth0 root netem delay 600ms 50ms"
+        params:
+          delay: "600ms"
+          jitter: "50ms"
+
+  parameters:
+    - name: "delay"
+      type: "string"
+      description: "Base delay to add"
+      default: "100ms"
+      examples: ["10ms", "50ms", "100ms", "500ms"]
+
+    - name: "jitter"
+      type: "string"
+      description: "Random variation in delay"
+      default: "10ms"
+      examples: ["5ms", "10ms", "20ms", "50ms"]
+
+  when_to_use:
+    network_conditions:
+      - "Testing environments only"
+      - "Development and QA phases"
+      - "Network simulation scenarios"
+
+    traffic_patterns:
+      - "Application resilience testing"
+      - "Protocol behavior validation"
+      - "Performance testing under adverse conditions"
+
+  monitoring:
+    - name: "ping_latency"
+      method: "ping target_host"
+      expected: "Latency increased by configured delay amount"
+
+    - name: "application_behavior"
+      method: "Application-specific tests"
+      expected: "Application handles increased latency gracefully"
+
+  complexity_level: "Variable"
+  risk_level: "Variable - Testing/simulation only"
+
+  anti_patterns:
+    - pattern: "Using in production environments"
+      why: "Intentionally degrades network performance"
+      fix: "Remove netem rules before production deployment"
+
+    - pattern: "Excessive delay values"
+      why: "Can cause applications to timeout or behave unexpectedly"
+      fix: "Use realistic delay values for target scenarios"
+
+  llm_guidance:
+    intent_keywords: ["netem", "delay", "latency", "testing", "simulation"]
+    confidence_threshold: 0.8
+    prerequisite_checks:
+      - "Confirm this is for testing only"
+      - "Verify netem kernel module is available"
+      - "Plan for removal after testing"
+    suggested_combinations:
+      - ["tc.netem_loss"] # Often combined for comprehensive network simulation

@@ -1,0 +1,87 @@
+# sysctl - IP Local Port Range
+- id: sysctl.ip_local_port_range
+  category: sysctl
+  subcategory: port_range
+
+  name: "Port Range"
+  description: "Range of local ports for outbound connections"
+
+  purpose: |
+    Defines the range of port numbers available for outbound connections.
+    Expanding this range allows more simultaneous connections, preventing
+    port exhaustion in high-traffic scenarios.
+
+  use_cases:
+    primary:
+      - name: "High traffic"
+        reason: "More ports = more connections"
+        priority: "high"
+      - name: "Proxy Servers"
+        reason: "Handle many outbound connections"
+        priority: "high"
+
+    secondary:
+      - name: "Load Balancers"
+        reason: "Support high connection counts"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "↑" # More available connections
+    jitter: "~" # Neutral
+    cpu_usage: "~" # Minimal impact
+    security: "↓" # Larger port range may aid scanning
+
+  configuration:
+    command_template: "echo '{start} {end}' > /proc/sys/net/ipv4/ip_local_port_range"
+
+    examples:
+      - description: "Expand port range for high traffic"
+        command: "echo '1024 65000' > /proc/sys/net/ipv4/ip_local_port_range"
+        params:
+          start: "1024"
+          end: "65000"
+
+  parameters:
+    - name: "start"
+      type: "integer"
+      description: "Starting port number"
+      default: "1024"
+      examples: ["1024", "32768"]
+
+    - name: "end"
+      type: "integer"
+      description: "Ending port number"
+      default: "65000"
+      examples: ["61000", "65000", "65535"]
+
+  when_to_use:
+    network_conditions:
+      - "High outbound connection rates"
+      - "Proxy/load balancer scenarios"
+      - "Many simultaneous connections"
+
+    traffic_patterns:
+      - "High connection turnover"
+      - "Outbound-heavy applications"
+      - "Proxy server workloads"
+
+  monitoring:
+    - name: "port_usage"
+      method: "ss -tan | wc -l"
+      expected: "Port usage well below maximum range"
+
+  complexity_level: "Medium"
+  risk_level: "Medium - Prevents port exhaustion"
+
+  anti_patterns:
+    - pattern: "Using full range (1-65535)"
+      why: "May interfere with system services on low ports"
+      fix: "Start from 1024 or higher to avoid system ports"
+
+  llm_guidance:
+    intent_keywords:
+      ["port range", "port exhaustion", "high traffic", "connections"]
+    confidence_threshold: 0.8
+    suggested_combinations:
+      - ["sysctl.tcp_fin_timeout"] # For faster port reuse

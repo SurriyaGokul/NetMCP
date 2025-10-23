@@ -1,0 +1,143 @@
+# sysctl - TCP Congestion Control
+- id: sysctl.tcp_congestion_control
+  category: sysctl
+  subcategory: tcp_performance
+
+  name: "TCP Congestion Control Algorithm"
+  description: "Select the TCP congestion control algorithm"
+
+  purpose: |
+    Determines how TCP responds to network congestion by controlling the
+    rate at which data is sent. Different algorithms have different behaviors
+    for fairness, throughput, latency, and response to packet loss.
+    Modern algorithms can significantly improve performance in various
+    network conditions.
+
+  use_cases:
+    primary:
+      - name: "High-Bandwidth Networks"
+        reason: "Optimize for maximum throughput utilization"
+        priority: "high"
+      - name: "Low-Latency Requirements"
+        reason: "Minimize latency impact of congestion control"
+        priority: "high"
+
+    secondary:
+      - name: "Mixed Network Conditions"
+        reason: "Better adaptation to varying network conditions"
+        priority: "medium"
+      - name: "Fairness Optimization"
+        reason: "Ensure fair bandwidth sharing between flows"
+        priority: "medium"
+
+  impact:
+    throughput: "↑↑" # Modern algorithms can significantly improve throughput
+    latency: "↑" # Some algorithms reduce latency under congestion
+    fairness: "↑" # Better fairness between competing flows
+    network_utilization: "↑↑" # More efficient network utilization
+    cpu_usage: "~" # Minimal additional CPU overhead
+
+  configuration:
+    command_template: "sysctl -w net.ipv4.tcp_congestion_control={algorithm}"
+
+    examples:
+      - description: "High-performance server (BBR)"
+        command: "sysctl -w net.ipv4.tcp_congestion_control=bbr"
+        params:
+          algorithm: "bbr"
+        use_case: "Google's BBR for high-throughput, low-latency"
+
+      - description: "Data center optimization (DCTCP)"
+        command: "sysctl -w net.ipv4.tcp_congestion_control=dctcp"
+        params:
+          algorithm: "dctcp"
+        use_case: "Data center networks with ECN support"
+
+      - description: "Conservative approach (CUBIC - default)"
+        command: "sysctl -w net.ipv4.tcp_congestion_control=cubic"
+        params:
+          algorithm: "cubic"
+        use_case: "Default algorithm, good general performance"
+
+      - description: "Legacy compatibility (Reno)"
+        command: "sysctl -w net.ipv4.tcp_congestion_control=reno"
+        params:
+          algorithm: "reno"
+        use_case: "Maximum compatibility with older networks"
+
+  parameters:
+    - name: "algorithm"
+      type: "string"
+      description: "Congestion control algorithm name"
+      default: "cubic"
+      examples: ["bbr", "cubic", "reno", "dctcp", "hybla", "vegas", "westwood"]
+
+  when_to_use:
+    network_conditions:
+      - "High-bandwidth, low-latency networks (BBR)"
+      - "Data center networks with ECN (DCTCP)"
+      - "Satellite/high-latency links (Hybla)"
+      - "Mixed or unknown conditions (CUBIC)"
+
+    traffic_patterns:
+      - "Bulk data transfers (BBR, CUBIC)"
+      - "Real-time applications (BBR, Vegas)"
+      - "Mixed workloads (CUBIC)"
+      - "Legacy network compatibility (Reno)"
+
+  monitoring:
+    - name: "current_algorithm"
+      method: "sysctl net.ipv4.tcp_congestion_control"
+      expected: "Verify configured algorithm is active"
+
+    - name: "available_algorithms"
+      method: "sysctl net.ipv4.tcp_available_congestion_control"
+      expected: "List of algorithms available on the system"
+
+    - name: "throughput_measurement"
+      method: "iperf3 -c target_host -t 30"
+      expected: "Improved throughput with optimized algorithm"
+
+    - name: "congestion_window_behavior"
+      method: "ss -i | grep -E 'cwnd|ssthresh'"
+      expected: "Appropriate congestion window dynamics"
+
+  complexity_level: "Low-Medium"
+  risk_level: "Low"
+
+  anti_patterns:
+    - pattern: "Using algorithm not available in kernel"
+      why: "Configuration will fail or fall back to default"
+      fix: "Check available algorithms with sysctl net.ipv4.tcp_available_congestion_control"
+
+    - pattern: "Using BBR without understanding buffer requirements"
+      why: "BBR may require larger buffers for optimal performance"
+      fix: "Ensure adequate buffer sizes when using BBR"
+
+    - pattern: "Using DCTCP without ECN support"
+      why: "DCTCP requires ECN to function properly"
+      fix: "Enable ECN or use different algorithm"
+
+    - pattern: "Changing algorithm without performance testing"
+      why: "Algorithm choice should be validated for specific workload"
+      fix: "Test performance with actual traffic patterns"
+
+  llm_guidance:
+    intent_keywords:
+      [
+        "congestion",
+        "control",
+        "algorithm",
+        "tcp",
+        "bbr",
+        "cubic",
+        "throughput",
+      ]
+    confidence_threshold: 0.9
+    prerequisite_checks:
+      - "Verify algorithm is available in kernel"
+      - "Consider buffer size requirements for chosen algorithm"
+      - "Test with actual traffic patterns"
+    suggested_combinations:
+      - ["sysctl.tcp_wmem", "sysctl.tcp_rmem"] # Buffer sizes may need adjustment
+      - ["sysctl.tcp_window_scaling"] # Required for high-performance algorithms

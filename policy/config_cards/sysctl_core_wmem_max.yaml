@@ -1,0 +1,80 @@
+# sysctl - Core wmem_max
+- id: sysctl.core_wmem_max
+  category: sysctl
+  subcategory: core_buffers
+
+  name: "Core Send Buffer Max"
+  description: "Maximum send buffer for all protocols"
+
+  purpose: |
+    Sets the maximum send buffer size that any socket can use. This acts as
+    an upper bound for TCP and other protocol send buffers, essential for
+    supporting large TCP windows on high-bandwidth connections.
+
+  use_cases:
+    primary:
+      - name: "High-bandwidth"
+        reason: "Support large TCP windows"
+        priority: "high"
+      - name: "Upload Servers"
+        reason: "Handle high upload throughput"
+        priority: "high"
+
+    secondary:
+      - name: "Content Delivery"
+        reason: "Optimize large content serving"
+        priority: "medium"
+
+  impact:
+    latency: "~" # Neutral
+    throughput: "↑↑" # High improvement for uploads
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # More memory management
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "echo '{max_buffer}' > /proc/sys/net/core/wmem_max"
+
+    examples:
+      - description: "Set maximum send buffer to 16MB"
+        command: "echo '16777216' > /proc/sys/net/core/wmem_max"
+        params:
+          max_buffer: "16777216"
+
+  parameters:
+    - name: "max_buffer"
+      type: "integer"
+      description: "Maximum send buffer size in bytes"
+      default: "16777216"
+      examples: ["16777216", "33554432", "67108864"]
+
+  when_to_use:
+    network_conditions:
+      - "High upload bandwidth requirements"
+      - "Content delivery scenarios"
+      - "Server environments"
+
+    traffic_patterns:
+      - "Live streaming/broadcasting"
+      - "File server operations"
+      - "Database replication"
+
+  monitoring:
+    - name: "send_buffer_utilization"
+      method: "ss -m | grep wmem"
+      expected: "Appropriate buffer usage for upload patterns"
+
+  complexity_level: "High"
+  risk_level: "High - Upper bound for TCP buffers"
+
+  anti_patterns:
+    - pattern: "Setting value lower than tcp_wmem max"
+      why: "TCP send buffers cannot exceed this value"
+      fix: "Ensure wmem_max >= tcp_wmem max value"
+
+  llm_guidance:
+    intent_keywords:
+      ["core buffer", "wmem_max", "upload bandwidth", "tcp windows"]
+    confidence_threshold: 0.8
+    suggested_combinations:
+      - ["sysctl.tcp_wmem"] # Must be <= wmem_max

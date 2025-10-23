@@ -1,0 +1,149 @@
+# iptables QoS Marking
+  - id: iptables.qos_marking
+    category: iptables
+    subcategory: qos_marking
+
+    name: "QoS Marking"
+    description: "Mark packets with QoS priority values"
+
+    purpose: |
+      Uses DSCP marking in the mangle table to prioritize network traffic by marking packets
+      with Quality of Service values. This ensures latency-sensitive applications like gaming
+      and audio receive appropriate network priority treatment.
+
+    use_cases:
+      primary:
+        - name: "Gaming"
+          reason: "Priority gaming traffic (DSCP 46/48 for gaming, 56 for audio)"
+          priority: "high"
+        - name: "VoIP/Audio"
+          reason: "Ensures audio packets get highest priority (DSCP 56)"
+          priority: "high"
+
+      secondary:
+        - name: "Video Streaming"
+          reason: "Prioritize video traffic for better quality"
+          priority: "medium"
+        - name: "Business Applications"
+          reason: "Prioritize critical business traffic"
+          priority: "medium"
+
+    impact:
+      latency: "↓↓↓" # Very high reduction for marked traffic
+      throughput: "~" # Neutral overall
+      jitter: "↓↓" # High reduction for prioritized traffic
+      cpu_usage: "↑" # Slight increase for packet marking
+      security: "~" # Neutral
+
+    configuration:
+      command_template: "iptables -t mangle -A {chain} -p {protocol} --{port_type} {port_range} -j DSCP --set-dscp {dscp_value}"
+
+      examples:
+        - description: "Mark gaming UDP traffic with DSCP 48"
+          command: "iptables -t mangle -A POSTROUTING -p udp --sport 1024:65535 -j DSCP --set-dscp 48"
+          params:
+            chain: "POSTROUTING"
+            protocol: "udp"
+            port_type: "sport"
+            port_range: "1024:65535"
+            dscp_value: "48"
+
+        - description: "Mark audio traffic with DSCP 56"
+          command: "iptables -t mangle -A POSTROUTING -p udp --sport 5060:5090 -j DSCP --set-dscp 56"
+          params:
+            chain: "POSTROUTING"
+            protocol: "udp"
+            port_type: "sport"
+            port_range: "5060:5090"
+            dscp_value: "56"
+
+    parameters:
+      - name: "dscp_value"
+        type: "integer"
+        description: "DSCP marking value for packet priority"
+        default: "48"
+        valid_values:
+          [
+            "0",
+            "8",
+            "10",
+            "12",
+            "14",
+            "16",
+            "18",
+            "20",
+            "22",
+            "24",
+            "26",
+            "28",
+            "30",
+            "32",
+            "34",
+            "36",
+            "38",
+            "40",
+            "46",
+            "48",
+            "56",
+          ]
+
+      - name: "port_range"
+        type: "string"
+        description: "Port range to match for marking"
+        default: "1024:65535"
+        examples: ["1024:65535", "5060:5090", "3478:3497"]
+
+    when_to_use:
+      network_conditions:
+        - "QoS-aware network infrastructure"
+        - "Congested network links"
+        - "Mixed traffic environments"
+
+      traffic_patterns:
+        - "Real-time gaming traffic"
+        - "VoIP and video conferencing"
+        - "Low-latency applications"
+
+    monitoring:
+      - name: "dscp_markings"
+        method: "tcpdump -v -i interface | grep 'DSCP'"
+        expected: "Packets marked with correct DSCP values"
+
+      - name: "mangle_table_stats"
+        method: "iptables -t mangle -L -v -n"
+        expected: "Packet counters increasing for marking rules"
+
+    complexity_level: "Very High"
+    risk_level: "Very High - Direct impact on latency-sensitive apps"
+
+    anti_patterns:
+      - pattern: "Marking all traffic with high priority"
+        why: "Defeats the purpose of QoS by making everything 'high priority'"
+        fix: "Use selective marking based on application needs"
+
+      - pattern: "Using DSCP marking without QoS-aware infrastructure"
+        why: "Markings are ignored by network equipment"
+        fix: "Ensure routers/switches support and respect DSCP markings"
+
+      - pattern: "Incorrect DSCP values"
+        why: "May cause unexpected prioritization or dropped packets"
+        fix: "Use standard DSCP values: 46 (EF), 48 (CS6), 56 (CS7)"
+
+    llm_guidance:
+      intent_keywords:
+        [
+          "qos",
+          "dscp",
+          "gaming priority",
+          "traffic marking",
+          "latency sensitive",
+        ]
+      confidence_threshold: 0.95
+      prerequisite_checks:
+        - "Verify mangle table support in iptables"
+        - "Ensure network infrastructure supports QoS"
+        - "Confirm DSCP marking module availability"
+
+      suggested_combinations:
+        - ["qdisc.fq_codel", "tcp.bbr"] # For complete gaming optimization
+        - ["iptables.connection_tracking"] # For connection state management

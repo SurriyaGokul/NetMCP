@@ -1,0 +1,80 @@
+# sysctl - Netdev Budget
+- id: sysctl.netdev_budget
+  category: sysctl
+  subcategory: netdev_budget
+
+  name: "Netdev Budget"
+  description: "Packets processed per NAPI poll"
+
+  purpose: |
+    Controls how many packets are processed per NAPI (New API) polling cycle.
+    Higher values improve throughput by processing more packets per interrupt,
+    but may increase latency. Tuning helps balance CPU efficiency vs latency.
+
+  use_cases:
+    primary:
+      - name: "High throughput"
+        reason: "Process more packets per interrupt"
+        priority: "high"
+      - name: "Busy Servers"
+        reason: "Optimize interrupt handling efficiency"
+        priority: "high"
+
+    secondary:
+      - name: "Network Appliances"
+        reason: "Balance CPU vs network processing"
+        priority: "medium"
+
+  impact:
+    latency: "↑" # May increase latency
+    throughput: "↑↑" # High throughput improvement
+    jitter: "↑" # Potential increase due to batching
+    cpu_usage: "↓" # More efficient interrupt handling
+    security: "~" # Neutral
+
+  configuration:
+    command_template: "echo '{budget}' > /proc/sys/net/core/netdev_budget"
+
+    examples:
+      - description: "Increase budget for high throughput"
+        command: "echo '600' > /proc/sys/net/core/netdev_budget"
+        params:
+          budget: "600"
+
+  parameters:
+    - name: "budget"
+      type: "integer"
+      description: "Packets per NAPI poll cycle"
+      default: "600"
+      examples: ["300", "600", "1000"]
+
+  when_to_use:
+    network_conditions:
+      - "High packet rate environments"
+      - "Throughput-focused applications"
+      - "Server environments"
+
+    traffic_patterns:
+      - "High-volume data transfer"
+      - "Bulk traffic processing"
+      - "Network appliance workloads"
+
+  monitoring:
+    - name: "interrupt_efficiency"
+      method: "cat /proc/interrupts | grep eth"
+      expected: "Lower interrupt rate with higher budget"
+
+  complexity_level: "Medium"
+  risk_level: "Medium - CPU vs latency tradeoff"
+
+  anti_patterns:
+    - pattern: "Very high values for latency-sensitive apps"
+      why: "Increases processing latency"
+      fix: "Use moderate values (300-600) for mixed workloads"
+
+  llm_guidance:
+    intent_keywords:
+      ["netdev budget", "napi", "interrupt handling", "throughput"]
+    confidence_threshold: 0.7
+    suggested_combinations:
+      - ["sysctl.tcp_rmem"] # For high-throughput optimization

@@ -1,0 +1,112 @@
+# tc - netem Loss
+- id: tc.netem_loss
+  category: tc
+  subcategory: netem_loss
+
+  name: "Packet Loss Simulation"
+  description: "Introduce artificial packet loss"
+
+  purpose: |
+    Introduces artificial packet loss to network connections for testing and 
+    simulation purposes. Useful for testing application behavior under lossy
+    network conditions, protocol resilience, and recovery mechanisms.
+
+  use_cases:
+    primary:
+      - name: "Network Testing"
+        reason: "Simulate unreliable network conditions"
+        priority: "high"
+      - name: "Protocol Testing"
+        reason: "Test TCP/UDP resilience and recovery"
+        priority: "high"
+
+    secondary:
+      - name: "Application Development"
+        reason: "Test application behavior under packet loss"
+        priority: "medium"
+
+  impact:
+    throughput: "↓↓" # Reduced due to retransmissions
+    latency: "↑" # Increased due to retransmissions
+    jitter: "↑↑" # Higher variance due to retransmissions
+    cpu_usage: "↑" # Processing overhead
+    reliability: "↓↓↓" # Intentionally reduced
+
+  configuration:
+    command_template: "tc qdisc add dev {interface} root netem loss {percentage}"
+
+    examples:
+      - description: "Introduce 1% packet loss"
+        command: "tc qdisc add dev eth0 root netem loss 1%"
+        params:
+          interface: "eth0"
+          loss_percentage: "1%"
+
+      - description: "Simulate wireless network with 5% loss"
+        command: "tc qdisc add dev wlan0 root netem loss 5%"
+        params:
+          interface: "wlan0"
+          loss_percentage: "5%"
+
+      - description: "High loss scenario for stress testing"
+        command: "tc qdisc add dev eth0 root netem loss 10%"
+        params:
+          loss_percentage: "10%"
+
+  parameters:
+    - name: "loss_percentage"
+      type: "string"
+      description: "Percentage of packets to drop"
+      default: "1%"
+      examples: ["0.1%", "1%", "2%", "5%", "10%"]
+
+  when_to_use:
+    network_conditions:
+      - "Testing environments only"
+      - "Wireless network simulation"
+      - "Congested network simulation"
+
+    traffic_patterns:
+      - "TCP resilience testing"
+      - "UDP application testing"
+      - "Real-time application testing"
+
+  monitoring:
+    - name: "packet_loss_rate"
+      method: "ping -c 100 target_host | grep 'packet loss'"
+      expected: "Reported loss matches configured percentage"
+
+    - name: "tcp_retransmissions"
+      method: "ss -i | grep retrans"
+      expected: "Increased retransmission counters"
+
+    - name: "application_recovery"
+      method: "Application-specific monitoring"
+      expected: "Application handles packet loss gracefully"
+
+  complexity_level: "Variable"
+  risk_level: "Variable - Testing/simulation only"
+
+  anti_patterns:
+    - pattern: "Using in production traffic"
+      why: "Intentionally degrades network reliability"
+      fix: "Remove netem rules before production deployment"
+
+    - pattern: "Excessive loss percentages (>10%)"
+      why: "Can break most applications and protocols"
+      fix: "Use realistic loss rates (typically 0.1-5%)"
+
+    - pattern: "Long-term testing without cleanup"
+      why: "Forgotten rules continue to degrade performance"
+      fix: "Implement automatic cleanup procedures"
+
+  llm_guidance:
+    intent_keywords:
+      ["netem", "loss", "packet loss", "drop", "testing", "simulation"]
+    confidence_threshold: 0.8
+    prerequisite_checks:
+      - "Confirm this is for testing only"
+      - "Verify cleanup procedures are in place"
+      - "Understand impact on applications"
+    suggested_combinations:
+      - ["tc.netem_delay"] # Often combined for comprehensive network simulation

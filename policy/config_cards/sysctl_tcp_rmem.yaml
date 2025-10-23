@@ -1,0 +1,142 @@
+# sysctl - TCP rmem
+- id: sysctl.tcp_rmem
+  category: sysctl
+  subcategory: tcp_buffers
+
+  name: "TCP Receive Memory Buffer"
+  description: "Configure TCP socket receive buffer sizes"
+
+  purpose: |
+    Controls the TCP receive buffer sizes for all TCP sockets on the system.
+    Affects how much data can be buffered for incoming TCP connections,
+    directly impacting throughput and memory usage for high-bandwidth or
+    high-latency network connections.
+
+  use_cases:
+    primary:
+      - name: "High-Bandwidth Networks"
+        reason: "Optimize throughput for fast network connections"
+        priority: "high"
+      - name: "High-Latency Networks"
+        reason: "Buffer more data to maintain throughput over long distances"
+        priority: "high"
+
+    secondary:
+      - name: "Server Optimization"
+        reason: "Tune for many concurrent connections"
+        priority: "medium"
+      - name: "Application Performance"
+        reason: "Reduce application blocking on network I/O"
+        priority: "medium"
+
+  impact:
+    throughput: "↑↑" # Higher buffers enable better throughput
+    latency: "~" # Minimal impact on latency
+    memory_usage: "↑↑" # Increases per-connection memory usage
+    connection_scalability: "↓" # Fewer connections possible with larger buffers
+    cpu_usage: "↑" # More memory copying overhead
+
+  configuration:
+    command_template: "sysctl -w net.ipv4.tcp_rmem='{min} {default} {max}'"
+
+    examples:
+      - description: "Standard server configuration"
+        command: "sysctl -w net.ipv4.tcp_rmem='4096 65536 16777216'"
+        params:
+          min_bytes: 4096
+          default_bytes: 65536
+          max_bytes: 16777216
+        use_case: "Balanced performance for most server workloads"
+
+      - description: "High-bandwidth optimization"
+        command: "sysctl -w net.ipv4.tcp_rmem='8192 262144 67108864'"
+        params:
+          min_bytes: 8192
+          default_bytes: 262144
+          max_bytes: 67108864
+        use_case: "10Gbps+ networks with high throughput requirements"
+
+      - description: "Memory-constrained environment"
+        command: "sysctl -w net.ipv4.tcp_rmem='4096 32768 8388608'"
+        params:
+          min_bytes: 4096
+          default_bytes: 32768
+          max_bytes: 8388608
+        use_case: "Limited memory systems or many connections"
+
+  parameters:
+    - name: "min_bytes"
+      type: "integer"
+      description: "Minimum receive buffer size allocated to each TCP socket"
+      default: 4096
+      examples: [4096, 8192, 16384]
+
+    - name: "default_bytes"
+      type: "integer"
+      description: "Default receive buffer size for new TCP sockets"
+      default: 65536
+      examples: [32768, 65536, 131072, 262144]
+
+    - name: "max_bytes"
+      type: "integer"
+      description: "Maximum receive buffer size that TCP can dynamically grow to"
+      default: 16777216
+      examples: [4194304, 8388608, 16777216, 33554432, 67108864]
+
+  when_to_use:
+    network_conditions:
+      - "High-bandwidth networks (1Gbps+)"
+      - "High-latency networks (satellite, intercontinental)"
+      - "Networks with varying conditions"
+
+    traffic_patterns:
+      - "Large file transfers"
+      - "Streaming applications"
+      - "Bulk data processing"
+      - "Database replication"
+
+  monitoring:
+    - name: "receive_buffer_usage"
+      method: "ss -m | grep -E 'rcv_space|rcv_ssthresh'"
+      expected: "Buffer usage appropriate for connection characteristics"
+
+    - name: "tcp_memory_pressure"
+      method: "cat /proc/net/sockstat | grep TCP"
+      expected: "Memory usage within system limits"
+
+    - name: "throughput_measurement"
+      method: "iperf3 -c target_host -t 30"
+      expected: "Improved throughput for bulk transfers"
+
+  complexity_level: "Medium"
+  risk_level: "Medium"
+
+  anti_patterns:
+    - pattern: "Setting max buffer too high without sufficient RAM"
+      why: "Can lead to memory exhaustion under load"
+      fix: "Calculate max_connections × max_buffer_size < available_memory"
+
+    - pattern: "Setting min buffer too low"
+      why: "Can cause poor performance for all connections"
+      fix: "Ensure min buffer is at least 4KB, preferably 8KB+"
+
+    - pattern: "Ignoring application buffer sizes"
+      why: "Application buffers may limit effectiveness"
+      fix: "Coordinate with application-level buffer tuning"
+
+    - pattern: "Not considering connection count"
+      why: "High buffer × many connections = memory exhaustion"
+      fix: "Balance buffer sizes with expected connection concurrency"
+
+  llm_guidance:
+    intent_keywords:
+      ["tcp", "rmem", "receive", "buffer", "throughput", "memory"]
+    confidence_threshold: 0.9
+    prerequisite_checks:
+      - "Calculate total memory impact (connections × buffer_size)"
+      - "Verify sufficient system memory available"
+      - "Consider application-level buffer tuning"
+    suggested_combinations:
+      - ["sysctl.tcp_wmem"] # Often tuned together
+      - ["sysctl.tcp_window_scaling"] # Required for large buffers
+      - ["sysctl.rmem_max"] # System-wide receive buffer limit

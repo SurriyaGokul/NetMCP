@@ -1,0 +1,81 @@
+# sysctl - TCP Max SYN Backlog
+- id: sysctl.tcp_max_syn_backlog
+  category: sysctl
+  subcategory: tcp_max_syn_backlog
+
+  name: "TCP Max SYN Backlog"
+  description: "Queue size for half-open connections"
+
+  purpose: |
+    Sets the maximum number of half-open (SYN received, SYN-ACK sent) connections
+    that can be queued. Increasing this helps handle bursts of new connections
+    without dropping them, essential for high-traffic servers.
+
+  use_cases:
+    primary:
+      - name: "High traffic"
+        reason: "Handle burst of new connections"
+        priority: "high"
+      - name: "Web Servers"
+        reason: "Prevent connection drops during traffic spikes"
+        priority: "high"
+
+    secondary:
+      - name: "Load Balancers"
+        reason: "Handle many simultaneous connection attempts"
+        priority: "medium"
+
+  impact:
+    latency: "↓" # Fewer dropped connections
+    throughput: "↑" # More successful connections
+    jitter: "~" # Neutral
+    cpu_usage: "↑" # More connection tracking memory
+    security: "↓" # Larger attack surface for SYN floods
+
+  configuration:
+    command_template: "echo '{backlog_size}' > /proc/sys/net/ipv4/tcp_max_syn_backlog"
+
+    examples:
+      - description: "Increase SYN backlog for high traffic"
+        command: "echo '4096' > /proc/sys/net/ipv4/tcp_max_syn_backlog"
+        params:
+          backlog_size: "4096"
+
+  parameters:
+    - name: "backlog_size"
+      type: "integer"
+      description: "Maximum half-open connections"
+      default: "4096"
+      examples: ["1024", "2048", "4096", "8192"]
+
+  when_to_use:
+    network_conditions:
+      - "High connection establishment rates"
+      - "Bursty traffic patterns"
+      - "Server environments"
+
+    traffic_patterns:
+      - "Web server traffic spikes"
+      - "API burst requests"
+      - "Load balancer scenarios"
+
+  monitoring:
+    - name: "syn_backlog_usage"
+      method: "netstat -s | grep -i listen"
+      expected: "No SYN drops due to queue overflow"
+
+  complexity_level: "Medium"
+  risk_level: "Medium - Prevents connection drops"
+
+  anti_patterns:
+    - pattern: "Setting extremely high values"
+      why: "Increases memory usage and SYN flood attack surface"
+      fix: "Size appropriately for expected connection rates"
+
+  llm_guidance:
+    intent_keywords:
+      ["syn backlog", "connection burst", "high traffic", "connection drops"]
+    confidence_threshold: 0.8
+    suggested_combinations:
+      - ["sysctl.tcp_syncookies"] # SYN flood protection
+      - ["iptables.connection_tracking_size"] # For connection tracking
