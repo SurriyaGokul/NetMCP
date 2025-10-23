@@ -1,4 +1,3 @@
-# server/registry.py
 from server.tools import planner, validator
 from server.tools.apply import checkpoints, apply
 
