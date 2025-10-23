@@ -7,12 +7,14 @@ class PolicyRegistry:
         self.load_cards(policy_root)
 
     def load_cards(self, root: str):
-        for file in Path(root).glob("*.yml"):
-            with open(file) as f:
-                card = yaml.safe_load(f)
-            key = card.get("id")
-            if key:
-                self.cards[key] = card
+        # Support both .yml and .yaml extensions
+        for pattern in ["*.yml", "*.yaml"]:
+            for file in Path(root).glob(pattern):
+                with open(file) as f:
+                    card = yaml.safe_load(f)
+                key = card.get("id")
+                if key:
+                    self.cards[key] = card
 
     def get(self, key: str):
         return self.cards.get(key)
