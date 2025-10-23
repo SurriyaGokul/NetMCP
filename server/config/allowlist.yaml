@@ -1,0 +1,6 @@
+binaries:
+  - /usr/sbin/sysctl
+  - /usr/sbin/tc
+  - /usr/sbin/nft
+  - /usr/sbin/ip
+  - /usr/sbin/ethtool
