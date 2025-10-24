@@ -1,4 +1,4 @@
-def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None, policy_registry=None) -> dict:
+def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None) -> dict:
     """
     Apply a rendered plan atomically with rollback capability.
     
@@ -10,7 +10,6 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
     Args:
         rendered_plan: The rendered plan containing commands to execute
         checkpoint_label: Optional label for the checkpoint
-        policy_registry: PolicyRegistry instance for accessing apply_tool mappings and defaults
     """
     from schema.models import RenderedPlan, ChangeReport
     from tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
@@ -34,8 +33,9 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
     notes = []
     checkpoint_id = None
     
+    # Create checkpoint before applying changes
     try:
-        checkpoint_result = snapshot_checkpoint(checkpoint_label, policy_registry)
+        checkpoint_result = snapshot_checkpoint(checkpoint_label)
         checkpoint_id = checkpoint_result.get("checkpoint_id")
         notes.append(f"Created checkpoint: {checkpoint_id}")
     except Exception as e:
@@ -161,7 +161,7 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
         notes.append(f"Rolling back to checkpoint {checkpoint_id}")
         
         try:
-            rollback_result = rollback_to_checkpoint(checkpoint_id, policy_registry)
+            rollback_result = rollback_to_checkpoint(checkpoint_id)
             if rollback_result.get("ok"):
                 notes.append("✓ Rollback successful")
             else:

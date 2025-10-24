@@ -1,11 +1,10 @@
-def render_change_plan(plan: dict, policy_registry=None) -> dict:
+def render_change_plan(plan: dict) -> dict:
     """
     Render a ParameterPlan into concrete command lists/scripts.
     This function does not produce side effects.
 
     Args:
         plan (dict): The ParameterPlan to be rendered.
-        policy_registry: PolicyRegistry instance for accessing config cards.
 
     Returns:
         dict: A RenderedPlan dictionary containing the rendered commands/scripts.
