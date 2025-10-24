@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Dict, Optional, Literal
-from pydantic import BaseModel, Field, conint, confloat, constr
+from pydantic import BaseModel, Field, conint, confloat, constr, RootModel
 
 NonEmptyStr = constr(strip_whitespace=True, min_length=1)
 Min3Str = constr(min_length=3)
@@ -34,8 +34,8 @@ class Offloads(BaseModel):
     tso: Optional[bool] = None
     lro: Optional[bool] = None
 
-class SysctlSet(BaseModel):
-    __root__: Dict[str, str]
+class SysctlSet(RootModel):
+    root: Dict[str, str]
 
 class DSCPMatch(BaseModel):
     proto: Optional[Literal["tcp", "udp"]] = None
@@ -92,3 +92,4 @@ PARAMETER_PLAN_SCHEMA = ParameterPlan.model_json_schema()
 RENDERED_PLAN_SCHEMA = RenderedPlan.model_json_schema()
 CHANGE_REPORT_SCHEMA = ChangeReport.model_json_schema()
 VALIDATION_RESULT_SCHEMA = ValidationResult.model_json_schema()
+

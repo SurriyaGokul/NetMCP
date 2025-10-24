@@ -43,13 +43,13 @@ def render_change_plan(plan: dict) -> dict:
     if changes.mtu:
         rendered.ip_link_cmds = _render_ip_link(iface, changes.mtu)
     
-    return rendered.dict()
+    return rendered.model_dump()
 
 
 def _render_sysctl(sysctl_set) -> list:
     """Render sysctl commands from a SysctlSet."""
     commands = []
-    for key, value in sysctl_set.__root__.items():
+    for key, value in sysctl_set.root.items():
         commands.append(f"sysctl -w {key}={value}")
     return commands
 
