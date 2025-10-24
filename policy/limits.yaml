@@ -1,0 +1,470 @@
+# Network Configuration Limits and Constraints
+# Research-backed parameter ranges to prevent LLM hallucination
+# All limits derived from Linux kernel documentation and validated research sources
+
+limits:
+  # TCP Buffer Size Limits (bytes)
+  # Source: Linux kernel documentation - Documentation/networking/ip-sysctl.txt
+  tcp_buffers:
+    # Minimum safe buffer sizes
+    min:
+      tcp_rmem_min: 4096 # Absolute minimum receive buffer (4KB)
+      tcp_wmem_min: 4096 # Absolute minimum send buffer (4KB)
+      core_rmem_min: 4096 # Minimum core receive buffer (4KB)
+      core_wmem_min: 4096 # Minimum core send buffer (4KB)
+
+    # Maximum safe buffer sizes (based on system memory constraints)
+    max:
+      tcp_rmem_max: 1073741824 # Maximum receive buffer (1GB) - extreme edge case
+      tcp_wmem_max: 1073741824 # Maximum send buffer (1GB) - extreme edge case
+      core_rmem_max: 1073741824 # Maximum core receive buffer (1GB)
+      core_wmem_max: 1073741824 # Maximum core send buffer (1GB)
+
+    # Recommended ranges by use case
+    recommended:
+      gaming:
+        min: 4096
+        default: 16777216 # 16MB
+        max: 33554432 # 32MB
+
+      streaming:
+        min: 8192
+        default: 67108864 # 64MB
+        max: 268435456 # 256MB
+
+      video_calls:
+        min: 4096
+        default: 33554432 # 32MB
+        max: 67108864 # 64MB
+
+      bulk_transfer:
+        min: 32768
+        default: 268435456 # 256MB
+        max: 536870912 # 512MB
+
+      server:
+        min: 4096
+        default: 67108864 # 64MB
+        max: 134217728 # 128MB
+
+  # TCP Window Scaling
+  # Source: RFC 1323 - TCP Extensions for High Performance
+  tcp_window_scaling:
+    allowed_values: [0, 1] # 0=disabled, 1=enabled
+    default: 1 # MUST be enabled for modern networks
+    note: "RFC 1323 mandates window scaling for high-bandwidth paths"
+
+  # TCP Timestamps
+  # Source: RFC 1323
+  tcp_timestamps:
+    allowed_values: [0, 1] # 0=disabled, 1=enabled
+    default: 1 # Recommended for accurate RTT measurement
+    note: "Essential for BBR congestion control"
+
+  # TCP FastOpen
+  # Source: RFC 7413 - TCP Fast Open
+  tcp_fastopen:
+    allowed_values: [0, 1, 2, 3] # Bitfield: client=1, server=2, both=3
+    default: 3 # Enable both client and server
+    max: 3
+    note: "Reduces connection establishment latency by 1 RTT"
+
+  # TCP Congestion Control Algorithms
+  # Source: Linux kernel - available congestion control modules
+  tcp_congestion_control:
+    allowed_values:
+      - "bbr" # Bottleneck Bandwidth and RTT (Google Research)
+      - "cubic" # CUBIC (Linux default)
+      - "reno" # Traditional Reno (legacy)
+      - "vegas" # TCP Vegas (delay-based)
+      - "westwood" # Westwood+ (wireless optimization)
+      - "htcp" # H-TCP (high-speed)
+
+    recommended_by_scenario:
+      high_bandwidth: "bbr" # >100 Mbps
+      low_bandwidth: "cubic" # <50 Mbps
+      wifi: ["bbr", "westwood"] # WiFi environments
+      server: "bbr" # Multi-flow server scenarios
+      gaming: "bbr" # Low latency requirement
+
+    prohibited:
+      - "compound" # Windows-specific
+      - "illinois" # Research-only
+      - "yeah" # Experimental
+
+    note: "BBR requires kernel 4.9+ and fq qdisc pairing"
+
+  # Queue Disciplines (qdisc)
+  # Source: Linux kernel networking documentation
+  default_qdisc:
+    allowed_values:
+      - "fq" # Fair Queue (optimal with BBR)
+      - "fq_codel" # Fair Queue with CoDel AQM
+      - "pfifo_fast" # Priority FIFO (legacy default)
+      - "cake" # Common Applications Kept Enhanced
+      - "htb" # Hierarchical Token Bucket
+
+    recommended_pairing:
+      bbr: "fq" # BBR REQUIRES fq or fq_codel
+      cubic: "fq_codel" # Good general-purpose pairing
+
+    prohibited:
+      - "tbf" # Too simple for modern use
+      - "sfq" # Stochastic Fair Queue (deprecated)
+
+    note: "BBR requires fq or fq_codel for optimal performance"
+
+  # Network Processing Budget
+  # Source: Linux kernel Documentation/networking/scaling.txt
+  netdev_budget:
+    min: 300 # Minimum processing budget
+    default: 600 # Kernel default for balanced systems
+    max: 2000 # Maximum for high-performance systems
+
+    recommended:
+      low_end: 300 # Systems with <4 CPU cores
+      balanced: 600 # Standard systems
+      high_performance: 1000 # Multi-core servers
+      extreme: 2000 # 10+ Gbps networks with 16+ cores
+
+    note: "Higher values increase throughput but may increase latency"
+
+  # TCP Connection Management
+  # Source: Linux kernel ip-sysctl.txt
+  tcp_connection_params:
+    tcp_fin_timeout:
+      min: 5 # Aggressive socket reuse (risky)
+      default: 15 # Balanced socket cleanup
+      max: 120 # Conservative (may exhaust ports)
+      recommended: [15, 30, 60]
+      note: "Gaming/Server: 15s, Streaming: 30s, Bulk: 60s"
+
+    tcp_max_syn_backlog:
+      min: 128 # Minimum queue size
+      default: 2048 # Standard server
+      max: 65535 # Maximum allowed by kernel
+      recommended:
+        gaming: 4096
+        server: 8192
+        high_load: 16384
+      note: "Protects against SYN flood attacks"
+
+    tcp_syncookies:
+      allowed_values: [0, 1] # 0=disabled, 1=enabled
+      default: 1 # MUST be enabled for security
+      note: "Essential DDoS protection mechanism"
+
+    ip_local_port_range:
+      min_port: 1024 # First unprivileged port
+      max_port: 65535 # Maximum TCP port
+      default: "1024 65000" # Standard range
+      note: "Provides ~64K available ports for outbound connections"
+
+  # TCP Low Latency Mode
+  # Source: Linux kernel TCP implementation
+  tcp_low_latency:
+    allowed_values: [0, 1] # 0=disabled, 1=enabled
+    default: 0 # Disabled by default
+    use_cases: ["gaming"] # Only for ultra-low latency scenarios
+    note: "Gaming-specific optimization, may reduce throughput"
+
+  # Network Interface Types
+  # Source: System detection capabilities
+  link_types:
+    allowed_values:
+      - "ethernet" # Wired Ethernet
+      - "wifi" # Wireless 802.11
+      - "cellular" # Mobile data
+      - "loopback" # Local loopback
+
+    characteristics:
+      ethernet:
+        latency: "low"
+        jitter: "minimal"
+        buffer_strategy: "large"
+
+      wifi:
+        latency: "medium"
+        jitter: "high"
+        buffer_strategy: "conservative"
+
+      cellular:
+        latency: "high"
+        jitter: "very_high"
+        buffer_strategy: "minimal"
+
+  # Link Speed Categories (Mbps)
+  # Source: Industry standard classifications
+  link_speed_categories:
+    very_slow:
+      range: [0, 10]
+      optimization: "minimal buffers, basic congestion control"
+
+    slow:
+      range: [10, 50]
+      optimization: "conservative buffers, CUBIC preferred"
+
+    moderate:
+      range: [50, 100]
+      optimization: "moderate buffers, BBR acceptable"
+
+    fast:
+      range: [100, 1000]
+      optimization: "large buffers, BBR recommended"
+
+    gigabit:
+      range: [1000, 10000]
+      optimization: "very large buffers, BBR optimal"
+
+    ten_gig_plus:
+      range: [10000, 100000]
+      optimization: "massive buffers, specialized tuning"
+
+    note: "Buffer sizes MUST scale proportionally with speed (RFC 1323)"
+
+  # System Resource Constraints
+  # Source: Practical system limitations
+  system_resources:
+    memory_gb:
+      categories:
+        very_low:
+          range: [0, 2]
+          max_buffer_total: 16777216 # 16MB total
+
+        low:
+          range: [2, 4]
+          max_buffer_total: 33554432 # 32MB total
+
+        moderate:
+          range: [4, 8]
+          max_buffer_total: 67108864 # 64MB total
+
+        high:
+          range: [8, 16]
+          max_buffer_total: 134217728 # 128MB total
+
+        very_high:
+          range: [16, 32]
+          max_buffer_total: 268435456 # 256MB total
+
+        extreme:
+          range: [32, 1024]
+          max_buffer_total: 536870912 # 512MB total
+
+      note: "Network buffers should not exceed 10% of total system memory"
+
+    cpu_cores:
+      categories:
+        low_end: [1, 2]
+        moderate: [2, 4]
+        balanced: [4, 8]
+        high_performance: [8, 16]
+        extreme: [16, 128]
+
+      processing_budget_scaling:
+        "1-2": 300
+        "2-4": 600
+        "4-8": 800
+        "8-16": 1000
+        "16+": 2000
+
+  # Firewall and Security Limits
+  # Source: Network security best practices
+  security_limits:
+    connection_limiting:
+      per_ip_min: 10 # Minimum per-IP connections
+      per_ip_default: 100 # Balanced security/usability
+      per_ip_max: 1000 # Maximum for trusted networks
+
+      recommended:
+        public_server: 50 # Strict for public-facing
+        internal_server: 200 # Relaxed for internal
+        development: 1000 # Minimal restrictions
+
+    rate_limiting:
+      format: "connections/time_unit"
+      time_units: ["second", "minute", "hour"]
+
+      recommended:
+        public_api: "100/minute"
+        web_server: "1000/minute"
+        internal: "10000/minute"
+
+      note: "Must balance security against legitimate traffic patterns"
+
+  # Performance Objectives Validation
+  # Source: ITU-T standards and industry benchmarks
+  performance_objectives:
+    latency_p95_ms:
+      gaming:
+        min: 5 # Best case scenario
+        target: 20 # Valve Source Engine target
+        max: 50 # Acceptable maximum
+
+      video_calls:
+        min: 50
+        target: 150 # ITU-T G.114 standard
+        max: 300 # Noticeable degradation
+
+      streaming:
+        min: 50
+        target: 100
+        max: 500 # Buffering compensates
+
+      bulk_transfer:
+        min: 100
+        target: 200
+        max: 1000 # Latency not critical
+
+      server:
+        min: 10
+        target: 50
+        max: 200
+
+    jitter_ms:
+      gaming:
+        target: 5
+        max: 10
+
+      video_calls:
+        target: 20
+        max: 50
+
+      streaming:
+        target: 50
+        max: 100
+
+    packet_loss_pct:
+      gaming:
+        target: 0.01 # <0.1% loss
+        max: 0.1
+
+      video_calls:
+        target: 0.1
+        max: 1.0
+
+      streaming:
+        target: 0.1
+        max: 2.0
+
+      bulk_transfer:
+        target: 0.5
+        max: 5.0
+
+  # Profile-Specific Parameter Constraints
+  # Source: Research-backed profile definitions
+  profile_constraints:
+    gaming:
+      must_have:
+        - "tcp_congestion_control: bbr"
+        - "tcp_low_latency: 1"
+        - "default_qdisc: fq"
+
+      buffer_range:
+        min: 4194304 # 4MB
+        max: 33554432 # 32MB
+
+      prohibited:
+        - "Large buffers (>32MB) - causes bufferbloat"
+        - "tcp_low_latency: 0 - defeats purpose"
+
+    streaming:
+      must_have:
+        - "tcp_congestion_control: bbr"
+        - "tcp_window_scaling: 1"
+
+      buffer_range:
+        min: 16777216 # 16MB
+        max: 268435456 # 256MB
+
+      prohibited:
+        - "tcp_low_latency: 1 - may hurt throughput"
+
+    video_calls:
+      must_have:
+        - "tcp_congestion_control: bbr"
+        - "tcp_fastopen: 3"
+
+      buffer_range:
+        min: 8388608 # 8MB
+        max: 67108864 # 64MB
+
+    bulk_transfer:
+      must_have:
+        - "tcp_congestion_control: bbr"
+        - "tcp_window_scaling: 1"
+
+      buffer_range:
+        min: 67108864 # 64MB
+        max: 1073741824 # 1GB
+
+      prohibited:
+        - "tcp_low_latency: 1 - reduces throughput"
+        - "tcp_fastopen: 3 - not beneficial for long transfers"
+
+    server:
+      must_have:
+        - "tcp_syncookies: 1"
+        - "tcp_fastopen: 3"
+
+      buffer_range:
+        min: 16777216 # 16MB
+        max: 134217728 # 128MB
+
+      prohibited:
+        - "tcp_syncookies: 0 - security risk"
+
+# Validation Rules for LLM
+validation_rules:
+  mandatory_checks:
+    - "All buffer sizes must be powers of 2 or kernel-recommended values"
+    - "BBR MUST be paired with fq or fq_codel qdisc"
+    - "tcp_syncookies MUST be enabled (1) for all server profiles"
+    - "tcp_window_scaling MUST be enabled (1) for all high-bandwidth scenarios"
+    - "Buffer sizes MUST NOT exceed 10% of total system memory"
+    - "Link speed and buffer size MUST be proportional (RFC 1323 bandwidth*delay product)"
+
+  prohibited_configurations:
+    - "BBR with pfifo_fast qdisc - performance degradation"
+    - "tcp_low_latency with bulk_transfer - throughput loss"
+    - "Buffers >512MB on systems with <8GB RAM - memory pressure"
+    - "tcp_syncookies disabled on public servers - security risk"
+    - "Buffers <4KB - below kernel minimum"
+
+  cross_validation:
+    - "If link.speed_mbit >= 1000, then tcp_window_scaling MUST be 1"
+    - "If tcp_congestion_control == 'bbr', then default_qdisc MUST be 'fq' or 'fq_codel'"
+    - "If profile == 'gaming', then tcp_low_latency SHOULD be 1"
+    - "If profile == 'server' AND server.type == 'public', then tcp_syncookies MUST be 1"
+    - "If system.memory_gb < 4, then max buffer size MUST be <= 33554432"
+
+# Error Prevention for LLM
+hallucination_prevention:
+  invalid_value_examples:
+    - "tcp_rmem: '999999999999' - exceeds kernel maximum"
+    - "tcp_congestion_control: 'turbo' - not a valid algorithm"
+    - "default_qdisc: 'ultra_fast' - fictional qdisc"
+    - "netdev_budget: 50000 - far exceeds practical maximum"
+    - "tcp_fin_timeout: 0 - below minimum safe value"
+
+  realistic_ranges:
+    note: "All values MUST come from documented Linux kernel parameters"
+    tcp_rmem_format: "min default max"
+    tcp_rmem_example: "4096 87380 16777216"
+
+  mandatory_research_backing:
+    - "Every configuration MUST reference a source from sources.txt"
+    - "No 'optimization' value without RFC or kernel documentation support"
+    - "All performance claims MUST cite validation studies"
+
+# Metadata
+metadata:
+  version: "1.0"
+  purpose: "Prevent LLM hallucination in network configuration generation"
+  last_updated: "2025-10-24"
+
+  critical_sources:
+    - "Linux kernel Documentation/networking/ip-sysctl.txt"
+    - "RFC 1323 - TCP Extensions for High Performance"
+    - "BBR research paper - ACM Queue 2016"
+    - "ITU-T G.114 - Latency standards"
