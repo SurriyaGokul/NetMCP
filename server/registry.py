@@ -35,10 +35,10 @@ def register_tools(mcp):
     Register all tools with the FastMCP server using decorators.
     These tools allow the LLM to plan, validate, and apply network optimizations.
     """
-    from tools.planner import render_change_plan
-    from tools.validator import validate_change_plan
-    from tools.apply.apply import apply_rendered_plan
-    from tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
+    from .tools.planner import render_change_plan
+    from .tools.validator import validate_change_plan
+    from .tools.apply.apply import apply_rendered_plan
+    from .tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
     
     @mcp.tool()
     def render_change_plan_tool(plan: dict) -> dict:
