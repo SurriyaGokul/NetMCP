@@ -11,10 +11,20 @@ class PolicyRegistry:
         for pattern in ["*.yml", "*.yaml"]:
             for file in Path(root).glob(pattern):
                 with open(file) as f:
-                    card = yaml.safe_load(f)
-                key = card.get("id")
-                if key:
-                    self.cards[key] = card
+                    data = yaml.safe_load(f)
+                    # Handle both list format (YAML files starting with -) and dict format
+                    if isinstance(data, list):
+                        # If it's a list, process each item
+                        for card in data:
+                            if isinstance(card, dict):
+                                key = card.get("id")
+                                if key:
+                                    self.cards[key] = card
+                    elif isinstance(data, dict):
+                        # If it's a single dict
+                        key = data.get("id")
+                        if key:
+                            self.cards[key] = data
 
     def get(self, key: str):
         return self.cards.get(key)

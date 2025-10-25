@@ -9,7 +9,7 @@ def render_change_plan(plan: dict) -> dict:
     Returns:
         dict: A RenderedPlan dictionary containing the rendered commands/scripts.
     """
-    from schema.models import ParameterPlan, RenderedPlan
+    from ..schema.models import ParameterPlan, RenderedPlan
     
     # Validate and parse the input plan
     try:

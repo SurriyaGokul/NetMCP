@@ -11,9 +11,9 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
         rendered_plan: The rendered plan containing commands to execute
         checkpoint_label: Optional label for the checkpoint
     """
-    from schema.models import RenderedPlan, ChangeReport
-    from tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
-    from tools.util.shell import run, run_script
+    from ...schema.models import RenderedPlan, ChangeReport
+    from .checkpoints import snapshot_checkpoint, rollback_to_checkpoint
+    from ..util.shell import run, run_script
     import tempfile
     import os
 

@@ -13,7 +13,7 @@ import unittest
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tools.validator import validate_change_plan
+from ..tools.validator import validate_change_plan
 
 
 class TestValidator(unittest.TestCase):

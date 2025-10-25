@@ -15,7 +15,7 @@ import json
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tools.planner import render_change_plan
+from ..tools.planner import render_change_plan
 
 
 class TestPlanner(unittest.TestCase):

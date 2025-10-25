@@ -12,7 +12,7 @@ def validate_change_plan(parameter_plan: dict) -> dict:
         - No unknown keys are present in the plan
         - All required fields are present
     """
-    from schema.models import ParameterPlan
+    from ..schema.models import ParameterPlan
     
     if not isinstance(parameter_plan, dict):
         return {"ok": False, "errors": ["parameter_plan must be of type dict"], "plan": None}
