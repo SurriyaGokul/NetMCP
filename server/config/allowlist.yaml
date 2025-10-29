@@ -4,3 +4,18 @@ binaries:
   - /usr/sbin/nft
   - /usr/sbin/ip
   - /usr/sbin/ethtool
+  - /usr/bin/ping
+  - /usr/bin/hostname
+  - /usr/bin/hostnamectl
+  - /usr/bin/arp
+  - /usr/bin/cat
+  - /usr/bin/ss
+  - /usr/bin/nmcli
+  - /usr/sbin/iwconfig
+  - /usr/sbin/iwlist
+  - /usr/bin/resolvectl
+  - /usr/bin/dig
+  - /usr/bin/host
+  - /usr/bin/nslookup
+  - /usr/bin/which
+  - /bin/sh
