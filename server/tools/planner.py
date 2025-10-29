@@ -210,3 +210,30 @@ def _render_ethtool(iface: str, offloads) -> list:
 def _render_ip_link(iface: str, mtu: int) -> list:
     """Render ip link command for MTU setting."""
     return [f"ip link set dev {iface} mtu {mtu}"]
+
+
+# --- Helper renderers for MCP Tools integration ---
+def render_sysctl(kv: dict[str, str]) -> list[str]:
+    """Render sysctl -w lines in deterministic order."""
+    return [f"sysctl -w {k}={v}" for k, v in sorted(kv.items())]
+
+def render_cake_root(iface: str, bandwidth_mbit: int, diffserv: bool = True, ecn: bool = True) -> list[str]:
+    """Render a single CAKE root qdisc line for tc."""
+    parts = ["tc", "qdisc", "replace", "dev", iface, "root", "cake", "bandwidth", f"{bandwidth_mbit}mbit"]
+    if diffserv:
+        parts.append("diffserv")
+    if ecn:
+        parts.append("ecn")
+    return [" ".join(parts)]
+
+def render_offloads(iface: str, flags: dict[str, bool]) -> list[str]:
+    """Render ethtool -K lines for selected flags."""
+    out: list[str] = []
+    for k in ["gro", "gso", "tso", "lro"]:
+        if k in flags:
+            out.append(f"ethtool -K {iface} {k} {'on' if flags[k] else 'off'}")
+    return out
+
+def render_ip_link(iface: str, mtu: int | None) -> list[str]:
+    """Render ip link set dev <iface> mtu <mtu> if provided."""
+    return [f"ip link set dev {iface} mtu {mtu}"] if mtu else []
