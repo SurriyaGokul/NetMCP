@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-10-29 13:30:08",
+  "latency": {
+    "available": true,
+    "min_ms": 17.283,
+    "avg_ms": 18.363,
+    "max_ms": 21.65,
+    "message": "Average latency: 18.363 ms"
+  },
+  "connection_handling": {
+    "tcp_max_syn_backlog": 1024,
+    "tcp_syncookies_enabled": true,
+    "somaxconn": 4096,
+    "available": true,
+    "message": "SYN backlog: 1024, somaxconn: 4096"
+  },
+  "buffer_sizes": {
+    "net.core.rmem_max": 16777216,
+    "net.core.wmem_max": 16777216,
+    "net.core.rmem_default": 212992,
+    "net.core.wmem_default": 212992,
+    "available": true,
+    "message": "rmem_max: 16.0 MB, wmem_max: 16.0 MB"
+  },
+  "tcp_settings": {
+    "net.ipv4.tcp_congestion_control": "cubic",
+    "net.core.default_qdisc": "fq_codel",
+    "net.ipv4.tcp_fastopen": "1",
+    "net.ipv4.tcp_window_scaling": "1",
+    "net.ipv4.tcp_timestamps": "1",
+    "net.ipv4.tcp_low_latency": "0",
+    "net.ipv4.tcp_fin_timeout": "60",
+    "available": true,
+    "message": "Congestion control: cubic, Qdisc: fq_codel"
+  },
+  "benchmark_duration_seconds": 9.05980896949768
+}
