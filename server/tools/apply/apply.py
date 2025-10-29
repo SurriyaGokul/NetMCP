@@ -1,3 +1,11 @@
+from ...schema.models import RenderedPlan, ChangeReport
+from .checkpoints import snapshot_checkpoint, rollback_to_checkpoint
+from ..util.shell import run
+from . import nft as apply_nft
+import tempfile
+import os
+
+
 def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None) -> dict:
     """
     Apply a rendered plan atomically with rollback capability.
@@ -11,12 +19,6 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
         rendered_plan: The rendered plan containing commands to execute
         checkpoint_label: Optional label for the checkpoint
     """
-    from ...schema.models import RenderedPlan, ChangeReport
-    from .checkpoints import snapshot_checkpoint, rollback_to_checkpoint
-    from ..util.shell import run, run_script
-    import tempfile
-    import os
-
     try:
         plan = RenderedPlan(**rendered_plan)
     except Exception as e:
@@ -56,93 +58,78 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
         if plan.sysctl_cmds:
             notes.append(f"Applying {len(plan.sysctl_cmds)} sysctl commands")
             for cmd in plan.sysctl_cmds:
-                try:
-                    # Parse sysctl command: "sysctl -w key=value"
-                    parts = cmd.split()
-                    if len(parts) >= 3 and parts[0] == "sysctl" and parts[1] == "-w":
-                        output = run(["/usr/sbin/sysctl", "-w", parts[2]], timeout=10)
-                        applied_steps.append(("sysctl", cmd))
-                        notes.append(f"✓ {cmd}")
-                    else:
-                        raise ValueError(f"Invalid sysctl command format: {cmd}")
-                except Exception as e:
-                    errors.append(f"sysctl failed: {cmd} - {e}")
-                    raise
+                # Parse sysctl command: "sysctl -w key=value"
+                parts = cmd.split()
+                if len(parts) >= 3 and parts[0] == "sysctl" and parts[1] == "-w":
+                    r = run(["sysctl", "-w", parts[2]], timeout=10)
+                    if not r.get("ok"):
+                        errors.append(f"sysctl failed: {cmd} - {r.get('stderr','')}\n{r.get('stdout','')}")
+                        raise RuntimeError("sysctl command failed")
+                    applied_steps.append(("sysctl", cmd))
+                    notes.append(f"✓ {cmd}")
+                else:
+                    errors.append(f"Invalid sysctl command format: {cmd}")
+                    raise ValueError(f"Invalid sysctl command format: {cmd}")
         
         # 2. Apply tc script
         if plan.tc_script and plan.tc_script.strip():
             notes.append("Applying tc script")
-            try:
-                # Write script to temporary file for better error reporting
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
-                    f.write("#!/bin/bash\n")
-                    f.write("set -e\n")  # Exit on error
-                    f.write(plan.tc_script)
-                    script_path = f.name
-                
-                try:
-                    os.chmod(script_path, 0o755)
-                    output = run_script(plan.tc_script, ["/bin/bash", "-c"], timeout=30)
-                    applied_steps.append(("tc", "script"))
-                    notes.append("✓ tc script applied successfully")
-                finally:
-                    os.unlink(script_path)
-            except Exception as e:
-                errors.append(f"tc script failed: {e}")
-                raise
+            # Execute lines deterministically via allowlisted runner
+            for raw in plan.tc_script.splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split()
+                r = run(parts, timeout=10)
+                if not r.get("ok"):
+                    errors.append(f"tc failed: {line} - {r.get('stderr','')}")
+                    raise RuntimeError("tc command failed")
+            applied_steps.append(("tc", "script"))
+            notes.append("✓ tc script applied successfully")
         
         # 3. Apply nftables script
         if plan.nft_script and plan.nft_script.strip():
             notes.append("Applying nftables script")
-            try:
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.nft', delete=False) as f:
-                    f.write(plan.nft_script)
-                    nft_path = f.name
-                
-                try:
-                    os.chmod(nft_path, 0o644)
-                    output = run(["/usr/sbin/nft", "-f", nft_path], timeout=30)
-                    applied_steps.append(("nft", "script"))
-                    notes.append("✓ nftables script applied successfully")
-                finally:
-                    os.unlink(nft_path)
-            except Exception as e:
-                errors.append(f"nftables script failed: {e}")
-                raise
+            r = apply_nft.apply_nft_ruleset(plan.nft_script)
+            if not r.get("ok"):
+                errors.append(f"nftables script failed: {r.get('stderr','')}")
+                raise RuntimeError("nft apply failed")
+            applied_steps.append(("nft", "script"))
+            notes.append("✓ nftables script applied successfully")
         
         # 4. Apply ethtool commands
         if plan.ethtool_cmds:
             notes.append(f"Applying {len(plan.ethtool_cmds)} ethtool commands")
             for cmd in plan.ethtool_cmds:
-                try:
-                    # Parse ethtool command: "ethtool -K iface param state"
-                    parts = cmd.split()
-                    if len(parts) >= 5 and parts[0] == "ethtool":
-                        output = run(["/usr/sbin/ethtool"] + parts[1:], timeout=10)
-                        applied_steps.append(("ethtool", cmd))
-                        notes.append(f"✓ {cmd}")
-                    else:
-                        raise ValueError(f"Invalid ethtool command format: {cmd}")
-                except Exception as e:
-                    errors.append(f"ethtool failed: {cmd} - {e}")
-                    raise
+                # Parse ethtool command: "ethtool -K iface param state"
+                parts = cmd.split()
+                if len(parts) >= 5 and parts[0] == "ethtool":
+                    r = run(parts, timeout=10)
+                    if not r.get("ok"):
+                        errors.append(f"ethtool failed: {cmd} - {r.get('stderr','')}")
+                        raise RuntimeError("ethtool command failed")
+                    applied_steps.append(("ethtool", cmd))
+                    notes.append(f"✓ {cmd}")
+                else:
+                    errors.append(f"Invalid ethtool command format: {cmd}")
+                    raise ValueError(f"Invalid ethtool command format: {cmd}")
         
         # 5. Apply ip link commands
         if plan.ip_link_cmds:
             notes.append(f"Applying {len(plan.ip_link_cmds)} ip link commands")
             for cmd in plan.ip_link_cmds:
-                try:
-                    # Parse ip link command: "ip link set dev iface mtu value"
-                    parts = cmd.split()
-                    if len(parts) >= 6 and parts[0] == "ip" and parts[1] == "link":
-                        output = run(["/usr/sbin/ip"] + parts[1:], timeout=10)
-                        applied_steps.append(("ip", cmd))
-                        notes.append(f"✓ {cmd}")
-                    else:
-                        raise ValueError(f"Invalid ip command format: {cmd}")
-                except Exception as e:
-                    errors.append(f"ip link failed: {cmd} - {e}")
-                    raise
+                # Parse ip link command: "ip link set dev iface mtu value"
+                parts = cmd.split()
+                if len(parts) >= 6 and parts[0] == "ip" and parts[1] == "link":
+                    r = run(parts, timeout=10)
+                    if not r.get("ok"):
+                        errors.append(f"ip link failed: {cmd} - {r.get('stderr','')}")
+                        raise RuntimeError("ip link command failed")
+                    applied_steps.append(("ip", cmd))
+                    notes.append(f"✓ {cmd}")
+                else:
+                    errors.append(f"Invalid ip command format: {cmd}")
+                    raise ValueError(f"Invalid ip command format: {cmd}")
         
         # Success
         notes.append(f"All changes applied successfully ({len(applied_steps)} operations)")
