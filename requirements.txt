@@ -1,4 +1,4 @@
-PyYAML
-fastmcp
-pydantic
-pytest
+PyYAML>=6.0
+fastmcp>=0.1.0
+pydantic>=2.0
+pytest>=7.0
