@@ -6,6 +6,10 @@ import yaml
 import os
 from typing import List
 
+# Structured response helper
+def _mk(ok: bool, code: int = 0, stdout: str = "", stderr: str = "") -> dict:
+    return {"ok": ok, "code": code, "stdout": stdout, "stderr": stderr}
+
 # Get the absolute path to the allowlist.yaml file
 ALLOWLIST_PATH = os.path.join(os.path.dirname(__file__), '../../config/allowlist.yaml')
 
@@ -22,33 +26,36 @@ def get_allowlist() -> List[str]:
 
 ALLOWED_BINARIES = get_allowlist()
 
-def run(cmd: List[str], timeout: int = 30) -> str:
+def _reject_meta(args: List[str]) -> None:
+    metas = {";", "&&", "||", "|", ">", "<", "`", "$(", ")"}
+    if any(any(m in a for m in metas) for a in args):
+        raise PermissionError("Unsafe metacharacter detected")
+
+def run(cmd: List[str], timeout: int = 5) -> dict:
     """
-    Runs a command after checking if it is in the allowlist.
-
-    Args:
-        cmd: The command to run as a list of strings.
-        timeout: The timeout in seconds.
-
-    Returns:
-        The stdout of the command as a string.
-
-    Raises:
-        ValueError: If the command is not in the allowlist.
-        subprocess.CalledProcessError: If the command fails.
-        subprocess.TimeoutExpired: If the command times out.
+    Run an allowlisted binary with strict args and timeout.
+    Returns: dict { ok, code, stdout, stderr }
     """
-    if not cmd or cmd[0] not in ALLOWED_BINARIES:
-        raise ValueError(f"Command not allowed: {cmd[0]}")
+    if not cmd:
+        return _mk(False, 1, stderr="Empty command")
 
-    result = subprocess.run(
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=timeout
-    )
-    return result.stdout
+    # Allow either absolute allowed paths from config or bare binary names listed there
+    binary = cmd[0]
+    allowed = set(ALLOWED_BINARIES)
+    allowed_names = {os.path.basename(p) for p in ALLOWED_BINARIES}
+    if binary not in allowed and binary not in allowed_names:
+        return _mk(False, 1, stderr=f"Command not allowlisted: {binary}")
+
+    _reject_meta(cmd)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+        return _mk(p.returncode == 0, p.returncode, p.stdout, p.stderr)
+    except subprocess.TimeoutExpired as e:
+        return _mk(False, 124, stderr=f"Timeout after {timeout}s")
+    except FileNotFoundError as e:
+        return _mk(False, 127, stderr=str(e))
+    except Exception as e:
+        return _mk(False, 1, stderr=str(e))
 
 def run_script(script: str, interpreter: List[str], timeout: int = 30) -> str:
     """
@@ -67,8 +74,14 @@ def run_script(script: str, interpreter: List[str], timeout: int = 30) -> str:
         subprocess.CalledProcessError: If the script fails.
         subprocess.TimeoutExpired: If the script times out.
     """
-    if not interpreter or interpreter[0] not in ALLOWED_BINARIES:
-        raise ValueError(f"Interpreter not allowed: {interpreter[0]}")
+    if not interpreter:
+        raise ValueError("Missing interpreter")
+
+    interp0 = interpreter[0]
+    allowed = set(ALLOWED_BINARIES)
+    allowed_names = {os.path.basename(p) for p in ALLOWED_BINARIES}
+    if interp0 not in allowed and interp0 not in allowed_names:
+        raise ValueError(f"Interpreter not allowlisted: {interp0}")
 
     cmd = interpreter + [script]
     result = subprocess.run(
