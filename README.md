@@ -2,9 +2,6 @@
 
 Intelligent, safe, and practical network optimization via Model Context Protocol (MCP). This server exposes discovery, planning, validation, and application tools so an MCP client (LLM/agent) can inspect your system, design an optimization plan, validate it against policy, and render/apply real commands with safeguards.
 
-Status: Working and fulfilling its purpose. Tested end-to-end with discovery, schema validation, plan rendering, demo scenarios, and benchmarking.
-
-
 ## Highlights ✨
 
 - Full MCP server powered by FastMCP with 30+ tools and policy resources
