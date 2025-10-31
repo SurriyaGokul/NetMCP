@@ -1,4 +1,4 @@
-# MCP Network Optimizer 🚀
+# MCP Network Optimizer 
 
 Intelligent, safe, and practical network optimization via Model Context Protocol (MCP). This server exposes discovery, planning, validation, and application tools so an MCP client (LLM/agent) can inspect your system, design an optimization plan, validate it against policy, and render/apply real commands with safeguards.
 
@@ -269,7 +269,7 @@ Key paths:
 - Tests, demos, benchmarks: `server/tests/*`
 
 
-## Next steps 🚀
+## Next steps 
 
 - Integrate real checkpoint/rollback (currently stubbed)
 - Add performance benchmarking suite with iperf3/netperf orchestration
@@ -279,5 +279,3 @@ Key paths:
 
 
 ---
-
-If you’re reviewing this project: the MCP server, tools, resource model, tests, and benchmarks are all included to demonstrate a complete, safe, and extensible approach to automated network optimization.
