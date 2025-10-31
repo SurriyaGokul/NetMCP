@@ -2,7 +2,7 @@
 
 Intelligent, safe, and practical network optimization via Model Context Protocol (MCP). This server exposes discovery, planning, validation, and application tools so an MCP client (LLM/agent) can inspect your system, design an optimization plan, validate it against policy, and render/apply real commands with safeguards.
 
-## Highlights ✨
+## Highlights
 
 - Full MCP server powered by FastMCP with 30+ tools and policy resources
 - Structured policy “configuration cards” for sysctl, tc, nftables, offloads, MTU
@@ -29,7 +29,7 @@ Intelligent, safe, and practical network optimization via Model Context Protocol
 - Next steps
 
 
-## Overview 🧭
+## Overview 
 
 MCP Network Optimizer is an MCP server that helps an LLM or agent optimize Linux networking:
 
@@ -40,7 +40,7 @@ MCP Network Optimizer is an MCP server that helps an LLM or agent optimize Linux
 5) Apply: Execute commands safely with checkpoint/rollback hooks.
 
 
-## Architecture 🧩
+## Architecture 
 
 - Server runtime: `fastmcp` (Model Context Protocol) in `server/main.py`
 - Resource and tool registry: `server/registry.py`
@@ -65,7 +65,7 @@ Key schemas (`server/schema/models.py`):
 - ChangeReport: applied, dry_run, errors[], checkpoint_id, notes[]
 
 
-## Policy model and MCP resources 📚
+## Policy model and MCP resources 
 
 Policy is expressed as “configuration cards” (YAML) with limits and profiles.
 
@@ -80,7 +80,7 @@ Exposed as MCP resources (see `server/registry.py`):
 - `policy://config_cards/{card_id}` — fetch a card’s full details
 
 
-## MCP tools catalog 🧰
+## MCP tools catalog 
 
 Discovery (no side effects):
 - ip_info, eth_info, hostname_ips, hostnamectl
@@ -109,7 +109,7 @@ Direct apply helpers (also registered as MCP tools):
 - set_mtu(iface: str, mtu: int)
 
 
-## Installation 🛠️
+## Installation 
 
 Prerequisites: Linux, Python 3.10+, standard networking tools (ip, sysctl, tc, nft, ethtool). Optional: NetworkManager (nmcli), wireless-tools (iwconfig/iwlist), dnsutils (dig/host/nslookup), traceroute.
 
@@ -122,7 +122,7 @@ pip install -r requirements.txt
 ```
 
 
-## Running the MCP server ▶️
+## Running the MCP server 
 
 From the repository root:
 
@@ -135,7 +135,7 @@ This starts “MCP Network Optimizer” via FastMCP, exposing the tools/resource
 MCP client integration: Configure your MCP-capable client (e.g., an agent/IDE that supports MCP) to launch this server and call tools/resources. Refer to your client’s documentation for adding external MCP servers (executable: `python -m server.main`).
 
 
-## Usage examples 📝
+## Usage examples 
 
 Programmatic (local Python) usage for planning, validation, rendering, and preview:
 
@@ -177,7 +177,7 @@ print(report["applied"], report["errors"], report["checkpoint_id"])
 Note: The checkpoint/rollback hooks are stubbed and ready for integration (see `server/tools/apply/checkpoints.py`).
 
 
-## Benchmarking and results 📊
+## Benchmarking and results 
 
 Scripts: `server/tests/benchmark.py`, baseline data: `server/tests/baseline_benchmark.json`.
 
@@ -194,7 +194,7 @@ python server/tests/benchmark.py -o after.json
 python server/tests/benchmark.py --compare baseline.json after.json
 ```
 
-Executive summary ✅
+Executive summary 
 - Discovery, validation, rendering, and integration flows are working end-to-end
 - 29+ configuration cards cover sysctl, tc, nftables, offloads, and MTU
 - Multiple scenarios validated: low-latency gaming, high-throughput servers, QoS/HTB, VPN/NAT, DDoS hardening
@@ -204,7 +204,7 @@ Measured baseline (from included benchmark script):
 - Buffer sizes: rmem_max ≈ 16 MB, wmem_max ≈ 16 MB
 - TCP baseline: congestion control=cubic, default qdisc=fq_codel, fastopen=1, window scaling=1, timestamps=on, low_latency=0, FIN timeout=60s, SYN backlog=1024
 
-Results at a glance 🏁
+Results at a glance 
 - Low‑latency gaming profile: 10–30% latency reduction expected; 15–25% faster connection setup; 30–50% faster connection recycling
 - High‑throughput server profile: 2–4× throughput on lossy networks (BBR); +20–50% on clean links; smoother bursts with larger buffers (128 MB)
 - QoS/HTB shaping: controlled bandwidth, fair queuing, reduced bufferbloat, lower latency under load
@@ -218,7 +218,7 @@ Example outcomes from demo scenarios:
 	- Expected: predictable bandwidth sharing, reduced queues/backlog under load
 
 
-## Testing and demo 🧪
+## Testing and demo 
 
 Run the full suite and demos:
 
@@ -244,7 +244,7 @@ What tests cover:
 - Scenario plans: gaming, server, QoS, VPN/NAT, DDoS hardening
 
 
-## Security and safety 🔒
+## Security and safety 
 
 - Command allowlisting via `server/config/allowlist.yaml`
 - Schema validation and policy limits before execution
@@ -253,7 +253,7 @@ What tests cover:
 - Strong recommendation to run the server as non‑root; elevate only specific commands as needed
 
 
-## Project structure 🗂️
+## Project structure 
 
 Key paths:
 - Server entrypoint: `server/main.py`
