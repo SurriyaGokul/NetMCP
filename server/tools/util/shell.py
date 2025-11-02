@@ -54,6 +54,74 @@ def run(cmd: List[str], timeout: int = 5) -> dict:
     except Exception as e:
         return _mk(False, 1, stderr=str(e))
 
+def run_privileged(cmd: List[str], timeout: int = 10) -> dict:
+    """
+    Run an allowlisted command with sudo (elevated privileges).
+    Requires passwordless sudo to be configured for the specified commands.
+    
+    Use setup_sudo.sh to configure passwordless sudo for network commands.
+    
+    Args:
+        cmd: Command to run as a list of strings
+        timeout: Command timeout in seconds
+    
+    Returns:
+        dict { ok, code, stdout, stderr }
+    """
+    if not cmd:
+        return _mk(False, 1, stderr="Empty command")
+    
+    # Check if command is in allowlist
+    binary = cmd[0]
+    allowed = set(ALLOWED_BINARIES)
+    allowed_names = {os.path.basename(p) for p in ALLOWED_BINARIES}
+    if binary not in allowed and binary not in allowed_names:
+        return _mk(False, 1, stderr=f"Command not allowlisted: {binary}")
+    
+    _reject_meta(cmd)
+    
+    # Prepend sudo -n (non-interactive)
+    sudo_cmd = ["sudo", "-n"] + cmd
+    
+    try:
+        p = subprocess.run(
+            sudo_cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False
+        )
+        
+        # Check for sudo password prompt (indicates sudo not configured)
+        if p.returncode != 0 and "password" in p.stderr.lower():
+            return _mk(
+                False,
+                p.returncode,
+                stderr=f"Sudo requires password. Run setup_sudo.sh to configure passwordless sudo."
+            )
+        
+        return _mk(p.returncode == 0, p.returncode, p.stdout, p.stderr)
+    
+    except subprocess.TimeoutExpired:
+        return _mk(False, 124, stderr=f"Timeout after {timeout}s")
+    except FileNotFoundError as e:
+        return _mk(False, 127, stderr=f"sudo or {binary} not found: {e}")
+    except Exception as e:
+        return _mk(False, 1, stderr=str(e))
+
+
+def is_sudo_configured() -> bool:
+    """
+    Check if passwordless sudo is configured for network commands.
+    
+    Returns:
+        True if sudo is configured, False otherwise
+    """
+    # Test with a harmless command
+    result = run_privileged(["sysctl", "--version"], timeout=2)
+    return result.get("ok", False)
+
+
 def run_script(script: str, interpreter: List[str], timeout: int = 30) -> str:
     """
     Runs a script using an interpreter after checking if the interpreter is in the allowlist.
