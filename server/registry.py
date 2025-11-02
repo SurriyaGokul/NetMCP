@@ -108,6 +108,191 @@ def register_tools(mcp):
             Dictionary with ok status and restoration notes
         """
         return rollback_to_checkpoint(checkpoint_id)
+    
+    @mcp.tool()
+    def list_checkpoints_tool() -> dict:
+        """
+        List all available checkpoints with their metadata.
+        
+        Returns:
+            Dictionary with list of checkpoints and their details
+        """
+        from .tools.apply.checkpoints import list_checkpoints
+        return list_checkpoints()
+    
+    @mcp.tool()
+    def delete_checkpoint_tool(checkpoint_id: str) -> dict:
+        """
+        Delete a specific checkpoint.
+        
+        Args:
+            checkpoint_id: The ID of the checkpoint to delete
+            
+        Returns:
+            Dictionary with deletion status
+        """
+        from .tools.apply.checkpoints import delete_checkpoint
+        return delete_checkpoint(checkpoint_id)
+    
+    # --- Validation & Performance Testing tools ---
+    
+    @mcp.tool()
+    def test_network_performance_tool(profile: str = "gaming") -> dict:
+        """
+        Run network performance tests to establish baseline or validate changes.
+        
+        Args:
+            profile: Test profile to use (gaming, throughput, balanced, low-latency)
+                - gaming: Focus on latency and jitter (20-30 pings)
+                - throughput: Focus on bandwidth (includes iperf3 if available)
+                - balanced: Mixed tests with moderate samples
+                - low-latency: Ultra-strict latency testing
+        
+        Returns:
+            {
+                "profile": str,
+                "timestamp": str,
+                "tests": {
+                    "latency": {
+                        "available": bool,
+                        "avg_ms": float,
+                        "min_ms": float,
+                        "max_ms": float,
+                        "jitter_ms": float,
+                        "packet_loss_percent": float,
+                        "message": str
+                    },
+                    "connection_time": {...},
+                    "dns_resolution": {...},
+                    "throughput": {...}  # Optional
+                },
+                "summary": str
+            }
+        
+        Use cases:
+            - Establish performance baseline before making changes
+            - Quick validation after applying configuration
+            - Troubleshooting network issues
+        """
+        from .tools.validation_metrics import run_full_benchmark
+        return run_full_benchmark(profile)
+    
+    @mcp.tool()
+    def quick_latency_test_tool() -> dict:
+        """
+        Quick latency test (10 pings) for rapid validation.
+        Useful for fast before/after comparisons during interactive optimization.
+        
+        Returns:
+            {
+                "available": bool,
+                "avg_ms": float,
+                "jitter_ms": float,
+                "packet_loss_percent": float,
+                "message": str
+            }
+        """
+        from .tools.validation_metrics import quick_latency_test
+        return quick_latency_test()
+    
+    @mcp.tool()
+    def validate_configuration_changes_tool(
+        before_results: dict,
+        after_results: dict,
+        profile: str = "gaming"
+    ) -> dict:
+        """
+        Compare before/after performance benchmarks and decide if changes improved performance.
+        
+        Args:
+            before_results: Benchmark results from test_network_performance_tool() BEFORE changes
+            after_results: Benchmark results from test_network_performance_tool() AFTER changes
+            profile: Validation profile (gaming, throughput, balanced, low-latency)
+        
+        Returns:
+            {
+                "decision": "KEEP" | "ROLLBACK" | "UNCERTAIN",
+                "score": int (0-100),
+                "summary": str,
+                "reasons": [str],  # Detailed explanation of decision
+                "metrics_comparison": {
+                    "latency_before_ms": float,
+                    "latency_after_ms": float,
+                    "latency_change_ms": float,
+                    "latency_change_percent": float,
+                    ...
+                },
+                "profile": str,
+                "before_timestamp": str,
+                "after_timestamp": str
+            }
+        
+        Decision logic by profile:
+            - gaming: Prioritizes latency (40%), jitter (30%), packet loss (20%), connection time (10%)
+            - throughput: Prioritizes bandwidth (50%), latency stability (20%), retransmits (20%), connection (10%)
+            - balanced: Equal weight to latency and throughput concerns
+            - low-latency: Ultra-strict on latency (avg 50%, max 50%), any increase is bad
+        
+        Use cases:
+            - Automated validation after applying network changes
+            - Determining if optimizations actually improved performance
+            - Making intelligent rollback decisions
+        """
+        from .tools.validation_engine import ValidationEngine
+        return ValidationEngine.compare_benchmarks(before_results, after_results, profile)
+    
+    @mcp.tool()
+    def auto_validate_and_rollback_tool(
+        checkpoint_id: str,
+        before_results: dict,
+        after_results: dict,
+        profile: str = "gaming",
+        auto_rollback: bool = True
+    ) -> dict:
+        """
+        Validate configuration changes and automatically rollback if performance degraded.
+        
+        This is a convenience tool that combines validation and rollback in one step.
+        
+        Args:
+            checkpoint_id: The checkpoint ID to rollback to if validation fails
+            before_results: Benchmark results before changes
+            after_results: Benchmark results after changes
+            profile: Validation profile
+            auto_rollback: If True, automatically rollback on ROLLBACK decision
+        
+        Returns:
+            {
+                "validation": {...},  # Full validation result
+                "action_taken": "KEPT" | "ROLLED_BACK" | "NO_ACTION",
+                "rollback_result": {...}  # Only present if rolled back
+            }
+        """
+        from .tools.validation_engine import ValidationEngine
+        
+        validation = ValidationEngine.compare_benchmarks(before_results, after_results, profile)
+        
+        action_taken = "NO_ACTION"
+        result = {"validation": validation}
+        
+        if validation["decision"] == "ROLLBACK" and auto_rollback:
+            rollback_result = rollback_to_checkpoint(checkpoint_id)
+            result["rollback_result"] = rollback_result
+            if rollback_result.get("ok"):
+                action_taken = "ROLLED_BACK"
+                result["message"] = "Configuration rolled back due to performance degradation"
+            else:
+                action_taken = "ROLLBACK_FAILED"
+                result["message"] = "Rollback attempted but failed - manual intervention required"
+        elif validation["decision"] == "KEEP":
+            action_taken = "KEPT"
+            result["message"] = "Configuration changes kept - performance improved"
+        elif validation["decision"] == "UNCERTAIN":
+            action_taken = "KEPT"
+            result["message"] = "Configuration kept but results uncertain - manual review recommended"
+        
+        result["action_taken"] = action_taken
+        return result
 
     # --- Discovery tools ---
     
