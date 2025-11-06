@@ -1,0 +1,196 @@
+# Validation Limits for Network Parameter Plans
+# Defines constraints for validator to check against
+# Configurable limits for bandwidth, DSCP, MTU, and other validation checks
+
+validation_limits:
+  # Bandwidth/Shaper Limits (in Mbps)
+  # Source: Modern datacenter hardware capabilities (100GbE, 200GbE, 400GbE)
+  bandwidth:
+    # Maximum allowed bandwidth values (in Mbps)
+    # Adjust based on your infrastructure:
+    #   - Datacenter/Cloud: 100000-400000 (100-400 Gbps)
+    #   - Enterprise: 10000-40000 (10-40 Gbps)
+    #   - SMB/Branch: 1000-10000 (1-10 Gbps)
+    #   - IoT/Edge: 100-1000 (100 Mbps - 1 Gbps)
+    max_mbps: 100000  # 100 Gbps - reasonable upper bound for modern hardware
+    
+    # Minimum bandwidth (prevent misconfigurations)
+    min_mbps: 1  # 1 Mbps minimum
+    
+    # Validation rules
+    rules:
+      - "ceil_mbit must be >= egress_mbit (HTB requirement)"
+      - "ingress_mbit must be within [min_mbps, max_mbps]"
+      - "egress_mbit must be within [min_mbps, max_mbps]"
+      - "ceil_mbit must be within [min_mbps, max_mbps]"
+    
+    notes:
+      - "100 Gbps accommodates modern datacenter NICs"
+      - "Acts as sanity check to catch typos (e.g., 999999)"
+      - "Modify max_mbps based on your deployment context"
+
+  # DSCP (DiffServ Code Point) Valid Values
+  # Source: RFC 2474, RFC 4594 (Configuration Guidelines for DiffServ Service Classes)
+  dscp:
+    # Standard DSCP values commonly supported by network equipment
+    valid_values:
+      - "EF"    # Expedited Forwarding (RFC 3246) - Voice, critical real-time
+      - "CS6"   # Class Selector 6 - Network control
+      - "CS5"   # Class Selector 5 - Signaling
+      - "CS4"   # Class Selector 4 - Streaming video
+      - "AF41"  # Assured Forwarding 41 (RFC 2597) - High priority data
+      - "AF42"  # Assured Forwarding 42 - High priority data
+      - "AF43"  # Assured Forwarding 43 - High priority data
+    
+    descriptions:
+      EF: "Expedited Forwarding - Lowest latency, highest priority (VoIP, gaming)"
+      CS6: "Class Selector 6 - Network routing protocols"
+      CS5: "Class Selector 5 - Video conferencing, broadcast video"
+      CS4: "Class Selector 4 - Streaming video, bulk data"
+      AF41: "Assured Forwarding 4/1 - High priority data, low drop"
+      AF42: "Assured Forwarding 4/2 - High priority data, medium drop"
+      AF43: "Assured Forwarding 4/3 - High priority data, high drop"
+    
+    rules:
+      - "DSCP values must be RFC-standardized"
+      - "Network equipment must support the DSCP value"
+      - "EF should be reserved for latency-critical traffic only"
+    
+    notes:
+      - "Other DSCP values (AF11-AF33, CS0-CS3) can be added if needed"
+      - "Default (best effort) traffic uses DSCP 0 (not configured explicitly)"
+      - "DSCP remarking may occur at network boundaries"
+
+  # MTU (Maximum Transmission Unit) Limits
+  # Source: RFC 791 (IPv4), RFC 8200 (IPv6), IEEE 802.3 (Ethernet)
+  mtu:
+    # Standard MTU ranges
+    min_bytes: 576     # IPv4 minimum safe MTU (RFC 791)
+    max_bytes: 9000    # Jumbo frames maximum
+    standard: 1500     # Default Ethernet MTU
+    jumbo: 9000        # Jumbo frames for datacenter/storage
+    
+    rules:
+      - "MTU must be >= 576 (IPv4 minimum safe value)"
+      - "MTU must be <= 9000 (jumbo frame maximum)"
+      - "Path MTU discovery should be enabled for non-standard MTUs"
+    
+    recommendations:
+      internet_facing: 1500    # Standard for internet connectivity
+      datacenter_internal: 9000  # Jumbo frames for internal traffic
+      vpn_tunnel: 1400         # Account for VPN overhead
+      pppoe: 1492              # PPPoE reduces MTU by 8 bytes
+    
+    notes:
+      - "Jumbo frames (>1500) require end-to-end support"
+      - "Fragmentation overhead increases with MTU mismatch"
+      - "Cloud providers may have specific MTU requirements"
+
+  # Qdisc (Queueing Discipline) Valid Types
+  # Source: Linux kernel tc documentation
+  qdisc:
+    valid_types:
+      - "cake"      # Common Applications Kept Enhanced
+      - "fq_codel"  # Fair Queue CoDel
+      - "htb"       # Hierarchical Token Bucket
+    
+    descriptions:
+      cake: "All-in-one queue management, good for home/small office"
+      fq_codel: "Low latency, per-flow fair queuing, ideal for gaming"
+      htb: "Traffic prioritization and class-based shaping for complex setups"
+    
+    rules:
+      - "Qdisc type must match kernel support"
+      - "BBR congestion control requires fq or fq_codel"
+      - "HTB requires manual class configuration"
+
+  # Offloads Valid Keys
+  # Source: ethtool documentation, Linux kernel networking
+  offloads:
+    valid_keys:
+      - "gro"  # Generic Receive Offload
+      - "gso"  # Generic Send Offload
+      - "tso"  # TCP Segmentation Offload
+      - "lro"  # Large Receive Offload (deprecated, rarely used)
+    
+    descriptions:
+      gro: "Coalesces received packets to reduce CPU overhead"
+      gso: "Defers packet segmentation to NIC hardware"
+      tso: "Offloads TCP segmentation to NIC (subset of GSO)"
+      lro: "Legacy receive offload (deprecated, use GRO instead)"
+    
+    rules:
+      - "Disable offloads on VMs/containers with virtio"
+      - "Disable on overlay networks (VXLAN, Geneve)"
+      - "Enable on physical NICs for high throughput"
+    
+    notes:
+      - "Not all NICs support all offloads"
+      - "Check with 'ethtool -k <interface>' before applying"
+
+  # Sysctl Parameter Validation
+  # Prevent common misconfigurations
+  sysctl:
+    # Example constraints (expand as needed)
+    tcp_congestion_control:
+      valid_values: ["bbr", "cubic", "reno", "vegas", "htcp", "bic"]
+    
+    tcp_fastopen:
+      valid_values: [0, 1, 2, 3]  # Bitmask: 0=disabled, 1=client, 2=server, 3=both
+    
+    tcp_window_scaling:
+      valid_values: [0, 1]  # Boolean
+    
+    tcp_timestamps:
+      valid_values: [0, 1]  # Boolean
+
+  # Plan Structure Validation
+  # Valid top-level and nested keys
+  plan_structure:
+    valid_top_keys:
+      - "iface"      # Network interface name
+      - "profile"    # Optimization profile name
+      - "changes"    # Changes to apply
+      - "validate"   # Validation targets and objectives
+      - "rationale"  # Explanation of changes
+    
+    valid_change_keys:
+      - "qdisc"     # Queueing discipline
+      - "shaper"    # Bandwidth shaping
+      - "sysctl"    # Kernel parameters
+      - "offloads"  # NIC offload settings
+      - "dscp"      # QoS DSCP marking
+      - "mtu"       # Maximum transmission unit
+    
+    valid_qdisc_keys:
+      - "type"      # Qdisc type (cake, fq_codel, htb)
+      - "params"    # Qdisc-specific parameters
+    
+    valid_shaper_keys:
+      - "ingress_mbit"  # Incoming bandwidth limit
+      - "egress_mbit"   # Outgoing bandwidth limit
+      - "ceil_mbit"     # Maximum burst capacity
+    
+    valid_offload_keys:
+      - "gro"
+      - "gso"
+      - "tso"
+      - "lro"
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  purpose: "Centralized validation limits for network parameter plans"
+  last_updated: "2025-11-06"
+  maintainer: "Network optimization team"
+  
+  change_log:
+    - date: "2025-11-06"
+      change: "Initial creation - extracted hardcoded limits from validator.py"
+      author: "GitHub Copilot"
+  
+  notes:
+    - "Modify bandwidth.max_mbps based on your infrastructure"
+    - "Add additional DSCP values if your network supports them"
+    - "Extend sysctl constraints as needed for your use case"
+    - "This file is loaded by validator.py at runtime"
