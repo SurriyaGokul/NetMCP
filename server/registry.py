@@ -1,16 +1,15 @@
+import json
+from .tools.planner import render_change_plan
+from .tools.validator import validate_change_plan
+from .tools.apply.apply import apply_rendered_plan
+from .tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
+# MCP Tools implementation exposure
+from .tools import discovery as _disc
+from .tools.apply import sysctl as _apply_sysctl, tc as _apply_tc, nft as _apply_nft, offloads as _apply_off, mtu as _apply_mtu
+
 def register_resources(mcp, policy_registry):
-    """
-    Register policy configuration cards as MCP resources.
-    The LLM can read these resources to understand available network optimization options.
-    """
-    import json
-    
     @mcp.resource("policy://config_cards/list")
     def get_policy_card_list() -> str:
-        """
-        Get a list of all available network optimization configuration cards.
-        Each card represents a specific network parameter that can be configured.
-        """
         cards = policy_registry.list()
         return json.dumps({
             "description": "Available network optimization configuration cards",
@@ -20,29 +19,16 @@ def register_resources(mcp, policy_registry):
     
     @mcp.resource("policy://config_cards/{card_id}")
     def get_policy_card(card_id: str) -> str:
-        """
-        Get detailed information about a specific configuration card.
-        Includes description, use cases, parameters, impacts, and examples.
-        """
         card = policy_registry.get(card_id)
         if not card:
             return json.dumps({"error": f"Configuration card '{card_id}' not found"})
         return json.dumps(card, indent=2)
-
 
 def register_tools(mcp):
     """
     Register all tools with the FastMCP server using decorators.
     These tools allow the LLM to plan, validate, and apply network optimizations.
     """
-    from .tools.planner import render_change_plan
-    from .tools.validator import validate_change_plan
-    from .tools.apply.apply import apply_rendered_plan
-    from .tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
-    # MCP Tools implementation exposure
-    from .tools import discovery as _disc
-    from .tools.apply import sysctl as _apply_sysctl, tc as _apply_tc, nft as _apply_nft, offloads as _apply_off, mtu as _apply_mtu
-    
     @mcp.tool()
     def render_change_plan_tool(plan: dict) -> dict:
         """
@@ -133,9 +119,7 @@ def register_tools(mcp):
         """
         from .tools.apply.checkpoints import delete_checkpoint
         return delete_checkpoint(checkpoint_id)
-    
-    # --- Validation & Performance Testing tools ---
-    
+       
     @mcp.tool()
     def test_network_performance_tool(profile: str = "gaming") -> dict:
         """
