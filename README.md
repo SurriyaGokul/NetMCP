@@ -1,4 +1,4 @@
-# 🚀 MCP Network Optimizer
+# MCP Network Optimizer
 
 <div align="center">
 
