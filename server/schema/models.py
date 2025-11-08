@@ -20,13 +20,30 @@ class ValidateSpec(BaseModel):
     objectives: Optional[ValidateObjectives] = None
 
 class Qdisc(BaseModel):
-    type: Literal["cake", "fq_codel", "htb"]
+    type: Literal["cake", "fq_codel", "htb", "fq", "pfifo_fast"]
     params: Dict[str, object] = Field(default_factory=dict) 
 
 class Shaper(BaseModel):
     ingress_mbit: Optional[conint(gt=0, le=100000)] = None
     egress_mbit: Optional[conint(gt=0, le=100000)] = None
     ceil_mbit: Optional[conint(gt=0, le=100000)] = None
+
+class Netem(BaseModel):
+    """Network emulation parameters for tc netem"""
+    delay_ms: Optional[conint(ge=0, le=10000)] = None
+    delay_jitter_ms: Optional[conint(ge=0, le=1000)] = None
+    loss_pct: Optional[confloat(ge=0, le=100)] = None
+    duplicate_pct: Optional[confloat(ge=0, le=100)] = None
+    corrupt_pct: Optional[confloat(ge=0, le=100)] = None
+    reorder_pct: Optional[confloat(ge=0, le=100)] = None
+
+class HTBClass(BaseModel):
+    """HTB class configuration"""
+    classid: str  # e.g., "1:10"
+    rate_mbit: conint(gt=0, le=100000)
+    ceil_mbit: Optional[conint(gt=0, le=100000)] = None
+    priority: Optional[conint(ge=0, le=7)] = None
+    burst: Optional[str] = None  # e.g., "15k"
 
 class Offloads(BaseModel):
     gro: Optional[bool] = None
@@ -48,12 +65,43 @@ class DSCPRule(BaseModel):
     match: DSCPMatch
     dscp: Literal["EF", "CS6", "CS5", "CS4", "AF41", "AF42", "AF43"]
 
+class ConnectionLimit(BaseModel):
+    """iptables/nftables connection limiting"""
+    protocol: Literal["tcp", "udp"]
+    port: conint(gt=0, lt=65536)
+    limit: conint(gt=0, le=10000)
+    mask: Optional[conint(ge=0, le=32)] = 32  # CIDR mask for subnet limiting
+
+class RateLimit(BaseModel):
+    """iptables/nftables rate limiting"""
+    rate: str  # e.g., "150/second", "1000/minute"
+    burst: Optional[conint(gt=0, le=1000)] = None
+
+class ConnectionTracking(BaseModel):
+    """Connection tracking configuration"""
+    max_connections: Optional[conint(gt=0, le=10000000)] = None
+    tcp_timeout_established: Optional[conint(gt=0, le=432000)] = None  # seconds
+    tcp_timeout_close_wait: Optional[conint(gt=0, le=3600)] = None
+
+class NATRule(BaseModel):
+    """NAT rule configuration"""
+    type: Literal["snat", "dnat", "masquerade"]
+    iface: Optional[str] = None
+    to_addr: Optional[str] = None  # for SNAT/DNAT
+    to_port: Optional[conint(gt=0, lt=65536)] = None
+
 class Changes(BaseModel):
     qdisc: Optional[Qdisc] = None
     shaper: Optional[Shaper] = None
+    netem: Optional[Netem] = None
+    htb_classes: Optional[List[HTBClass]] = None
     sysctl: Optional[SysctlSet] = None
     offloads: Optional[Offloads] = None
     dscp: Optional[List[DSCPRule]] = None
+    connection_limits: Optional[List[ConnectionLimit]] = None
+    rate_limits: Optional[List[RateLimit]] = None
+    connection_tracking: Optional[ConnectionTracking] = None
+    nat_rules: Optional[List[NATRule]] = None
     mtu: Optional[conint(ge=576, le=9000)] = None  # IPv4 safe min through jumbo
 
 class ParameterPlan(BaseModel):
