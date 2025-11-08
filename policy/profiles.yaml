@@ -33,9 +33,16 @@ profiles:
       - "sysctl.tcp_congestion_control" # BBR for ultra-low latency
       - "sysctl.tcp_low_latency" # Gaming-specific optimization
       - "sysctl.tcp_fastopen" # Reduce connection setup time
+      - "sysctl.tcp_timestamps" # Accurate RTT measurement
+      - "sysctl.tcp_window_scaling" # RFC 1323 compliance
       - "sysctl.default_qdisc" # Fair queueing for consistent latency
+      - "sysctl.core_rmem_max" # Receive buffer optimization
+      - "sysctl.core_wmem_max" # Send buffer optimization
+      - "sysctl.tcp_rmem" # TCP receive buffer tuning
+      - "sysctl.tcp_wmem" # TCP send buffer tuning
       - "iptables.connection_tracking" # Skip rules for active connections
       - "tc.htb_priority" # Traffic prioritization
+      - "tc.qdisc_type" # Queue discipline selection
 
     validation:
       ping_target: "1.1.1.1" # Cloudflare DNS (global, fast)
@@ -85,10 +92,15 @@ profiles:
     active_cards:
       - "sysctl.tcp_congestion_control" # BBR for high throughput
       - "sysctl.tcp_window_scaling" # Essential for large transfers
+      - "sysctl.tcp_timestamps" # Better congestion control feedback
       - "sysctl.core_rmem_max" # Large receive buffers
       - "sysctl.core_wmem_max" # Large send buffers
-      - "tc.htb_rate" # Bandwidth allocation
+      - "sysctl.tcp_rmem" # Large TCP receive buffers
+      - "sysctl.tcp_wmem" # Large TCP send buffers
       - "sysctl.netdev_budget" # Higher processing budget
+      - "tc.htb_rate" # Bandwidth allocation
+      - "tc.qdisc_type" # Queue discipline selection
+      - "sysctl.default_qdisc" # Fair queueing optimized with BBR
 
     validation:
       ping_target: "8.8.8.8" # Google DNS
@@ -139,9 +151,17 @@ profiles:
     active_cards:
       - "sysctl.tcp_congestion_control" # Balanced latency/throughput
       - "sysctl.tcp_fastopen" # Faster connection setup
+      - "sysctl.tcp_timestamps" # Required for accurate RTT
+      - "sysctl.tcp_window_scaling" # RFC 1323 compliance
       - "sysctl.default_qdisc" # Low latency queueing
+      - "sysctl.tcp_fin_timeout" # Moderate cleanup time
+      - "sysctl.core_rmem_max" # Balanced receive buffers
+      - "sysctl.core_wmem_max" # Balanced send buffers
+      - "sysctl.tcp_rmem" # Optimized for media streams
+      - "sysctl.tcp_wmem" # Optimized for media streams
       - "iptables.qos_marking" # QoS for video traffic
       - "sysctl.tcp_max_syn_backlog" # Handle connection bursts
+      - "tc.qdisc_type" # Queue discipline for real-time
 
     validation:
       ping_target: "zoom.us" # Video conferencing service
@@ -191,10 +211,16 @@ profiles:
     active_cards:
       - "sysctl.tcp_congestion_control" # BBR for maximum throughput
       - "sysctl.tcp_window_scaling" # Essential for large transfers
+      - "sysctl.tcp_timestamps" # Accurate RTT measurement
       - "sysctl.core_rmem_max" # Maximum receive buffers
       - "sysctl.core_wmem_max" # Maximum send buffers
       - "sysctl.tcp_rmem" # Large TCP receive buffers
+      - "sysctl.tcp_wmem" # Large TCP send buffers
       - "sysctl.netdev_budget" # Maximum processing budget
+      - "sysctl.default_qdisc" # Fair queueing optimal with BBR
+      - "sysctl.ip_local_port_range" # Expanded port range for connections
+      - "tc.htb_rate" # Bandwidth management
+      - "tc.qdisc_type" # Queue discipline selection
 
     validation:
       ping_target: "8.8.8.8"
@@ -246,10 +272,21 @@ profiles:
     active_cards:
       - "sysctl.tcp_congestion_control" # BBR for server workloads
       - "sysctl.tcp_fastopen" # Faster HTTP connections
+      - "sysctl.tcp_timestamps" # Accurate connection tracking
+      - "sysctl.tcp_window_scaling" # RFC 1323 compliance
       - "sysctl.tcp_max_syn_backlog" # Handle connection bursts
       - "sysctl.tcp_fin_timeout" # Fast socket reuse
+      - "sysctl.tcp_syncookies" # DDoS protection
+      - "sysctl.core_rmem_max" # Balanced server buffers
+      - "sysctl.core_wmem_max" # Balanced server buffers
+      - "sysctl.tcp_rmem" # Optimized for many connections
+      - "sysctl.tcp_wmem" # Optimized for many connections
+      - "sysctl.ip_local_port_range" # Expanded port range
       - "iptables.connection_limiting" # Per-IP connection limits
       - "iptables.connection_tracking" # Connection state tracking
+      - "iptables.connection_tracking_size" # Conntrack table size
+      - "iptables.rate_limiting" # Rate limiting for protection
+      - "tc.qdisc_type" # Queue discipline for servers
 
     validation:
       ping_target: "localhost"
