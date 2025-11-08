@@ -5,7 +5,7 @@ from .tools.apply.apply import apply_rendered_plan
 from .tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
 # MCP Tools implementation exposure
 from .tools import discovery as _disc
-from .tools.apply import sysctl as _apply_sysctl, tc as _apply_tc, nft as _apply_nft, offloads as _apply_off, mtu as _apply_mtu
+from .tools.apply import sysctl as _apply_sysctl, tc as _apply_tc, nft as _apply_nft, offloads as _apply_off, mtu as _apply_mtu, iptables as _apply_iptables
 
 def register_resources(mcp, policy_registry):
     @mcp.resource("policy://config_cards/list")
