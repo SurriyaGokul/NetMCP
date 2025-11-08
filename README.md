@@ -62,12 +62,12 @@ Comprehensive coverage of Linux networking stack:
 
 ### 🛡️ Enterprise Safety Features
 
-- ✅ **Command Allowlisting**: Only approved binaries can execute
-- ✅ **Checkpoint/Rollback**: Automatic state snapshots before changes
-- ✅ **Schema Validation**: Pydantic models enforce type safety
-- ✅ **Policy Enforcement**: All changes validated against limits
-- ✅ **Audit Logging**: Complete execution history and rationale
-- ✅ **Atomic Operations**: All-or-nothing change application
+- **Command Allowlisting**: Only approved binaries can execute
+- **Checkpoint/Rollback**: Automatic state snapshots before changes
+- **Schema Validation**: Pydantic models enforce type safety
+- **Policy Enforcement**: All changes validated against limits
+- **Audit Logging**: Complete execution history and rationale
+- **Atomic Operations**: All-or-nothing change application
 
 ### 🔧 Comprehensive Toolset
 
