@@ -46,9 +46,8 @@ Traditional network optimization requires deep Linux expertise and manual comman
 Comprehensive coverage of Linux networking stack:
 
 - **16 Sysctl Cards**: TCP/IP tuning, buffer management, connection handling
-- **8 Traffic Control Cards**: Queue disciplines, shaping, network emulation
-- **5 Firewall/Security Cards**: Connection limiting, rate limiting, QoS, NAT
-- **2 NIC Cards**: Hardware offloads, MTU configuration
+- **7 Traffic Control Cards**: Queue disciplines, shaping, network emulation
+- **6 Firewall/Security Cards**: Connection limiting, rate limiting, QoS, NAT
 
 ### 🎭 5 Optimization Profiles
 
@@ -101,7 +100,7 @@ Comprehensive coverage of Linux networking stack:
 
 - **OS**: Linux (tested on Ubuntu 20.04+, Debian 11+)
 - **Python**: 3.10 or higher  
-- **Tools**: `ip`, `sysctl`, `tc`, `nft` (nftables), `ethtool`
+- **Tools**: `ip`, `sysctl`, `tc`, `nft` (nftables)
 - **Optional**: NetworkManager (`nmcli`), wireless-tools, dnsutils
 
 ### Installation

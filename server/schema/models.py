@@ -45,12 +45,6 @@ class HTBClass(BaseModel):
     priority: Optional[conint(ge=0, le=7)] = None
     burst: Optional[str] = None  # e.g., "15k"
 
-class Offloads(BaseModel):
-    gro: Optional[bool] = None
-    gso: Optional[bool] = None
-    tso: Optional[bool] = None
-    lro: Optional[bool] = None
-
 class SysctlSet(RootModel):
     root: Dict[str, str]
 
@@ -96,13 +90,11 @@ class Changes(BaseModel):
     netem: Optional[Netem] = None
     htb_classes: Optional[List[HTBClass]] = None
     sysctl: Optional[SysctlSet] = None
-    offloads: Optional[Offloads] = None
     dscp: Optional[List[DSCPRule]] = None
     connection_limits: Optional[List[ConnectionLimit]] = None
     rate_limits: Optional[List[RateLimit]] = None
     connection_tracking: Optional[ConnectionTracking] = None
     nat_rules: Optional[List[NATRule]] = None
-    mtu: Optional[conint(ge=576, le=9000)] = None  # IPv4 safe min through jumbo
 
 class ParameterPlan(BaseModel):
     iface: NonEmptyStr
@@ -115,8 +107,6 @@ class RenderedPlan(BaseModel):
     sysctl_cmds: List[str] = Field(default_factory=list)      # ["sysctl -w net.ipv4.tcp_congestion_control=bbr", ...]
     tc_script: str = ""                                       # full multiline `tc` script
     nft_script: str = ""                                      # full multiline `nft -f` script (or empty if unused)
-    ethtool_cmds: List[str] = Field(default_factory=list)     # ["ethtool -K eth0 gro off", ...]
-    ip_link_cmds: List[str] = Field(default_factory=list)     # ["ip link set dev eth0 mtu 1500"]
 
 class ChangeReport(BaseModel):
     applied: bool

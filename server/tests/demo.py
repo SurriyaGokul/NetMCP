@@ -267,63 +267,6 @@ def demo_5_qos_bandwidth_limiting():
             print_info(f"• {issue.get('message', issue)}", 1)
 
 
-def demo_6_hardware_offloads():
-    """Demo 6: Hardware Offload Optimization"""
-    print_header("DEMO 6: Hardware Offload Configuration")
-    
-    plan = {
-        "iface": "eth0",
-        "profile": "performance",
-        "changes": {
-            "offloads": {
-                "gro": True,  # Generic Receive Offload
-                "gso": True,  # Generic Segmentation Offload
-                "tso": True,  # TCP Segmentation Offload
-                "lro": False  # Large Receive Offload (disable for routing)
-            }
-        },
-        "rationale": [
-            "Enable GRO to reduce per-packet processing overhead",
-            "Enable GSO/TSO for better sending performance",
-            "Disable LRO as it interferes with routing/forwarding"
-        ]
-    }
-    
-    print("Optimization Goal: Configure hardware offloads for best performance")
-    print()
-    print("Rationale:")
-    for reason in plan["rationale"]:
-        print_info(f"• {reason}", 1)
-    
-    print()
-    print("Step 1: Validating plan...")
-    validation = validate_change_plan(plan)
-    
-    if validation["ok"]:
-        print_success("Validation PASSED")
-        print()
-        
-        print("Step 2: Rendering executable commands...")
-        rendered = render_change_plan(plan)
-        
-        if rendered.get('ethtool_cmds'):
-            print_success(f"Generated {len(rendered['ethtool_cmds'])} ethtool commands")
-            print()
-            print("Commands:")
-            for i, cmd in enumerate(rendered['ethtool_cmds'], 1):
-                print_info(f"{i}. {cmd}", 1)
-        
-        print()
-        print_success("Hardware offloads improve:")
-        print_info("• CPU efficiency: Less CPU cycles per packet", 1)
-        print_info("• Throughput: Higher data rates with same hardware", 1)
-        print_info("• Latency: Reduced processing time", 1)
-    else:
-        print(f"✗ Validation FAILED")
-        for issue in validation.get("issues", []):
-            print_info(f"• {issue.get('message', issue)}", 1)
-
-
 def main():
     """Run all demos."""
     print("\n" + "="*80)
@@ -337,16 +280,15 @@ def main():
         demo_3_low_latency_gaming()
         demo_4_high_throughput_server()
         demo_5_qos_bandwidth_limiting()
-        demo_6_hardware_offloads()
         
         print_header("DEMO COMPLETE")
         print_success("All demos executed successfully!")
         print()
         print("Key Takeaways:")
         print_info("1. The system can discover network configuration", 1)
-        print_info("2. 29+ configuration cards provide optimization options", 1)
+        print_info("2. 29 configuration cards provide optimization options", 1)
         print_info("3. Plans are validated against schema and policy rules", 1)
-        print_info("4. Commands are rendered as executable sysctl/tc/ethtool commands", 1)
+        print_info("4. Commands are rendered as executable sysctl/tc/nft commands", 1)
         print_info("5. Different use cases (gaming, servers, QoS) are supported", 1)
         print()
         print("The MCP Network Optimizer is working correctly and fulfills its purpose:")

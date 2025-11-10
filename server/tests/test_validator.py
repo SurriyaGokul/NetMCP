@@ -251,23 +251,6 @@ class TestValidator(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertTrue(any("unknown" in err.lower() and "qdisc" in err.lower() for err in result["errors"]))
     
-    def test_unknown_keys_in_offloads(self):
-        """Test that unknown keys in offloads are rejected"""
-        plan = {
-            "iface": "eth0",
-            "profile": "gaming",
-            "changes": {
-                "offloads": {
-                    "gro": True,
-                    "gso": False,
-                    "invalid_offload": True  # Unknown key
-                }
-            }
-        }
-        result = validate_change_plan(plan)
-        self.assertFalse(result["ok"])
-        self.assertTrue(any("unknown" in err.lower() and "offloads" in err.lower() for err in result["errors"]))
-    
     def test_multiple_errors(self):
         """Test that multiple validation errors are all reported"""
         plan = {
@@ -316,19 +299,12 @@ class TestValidator(unittest.TestCase):
                 "sysctl": {
                     "net.ipv4.tcp_congestion_control": "bbr"
                 },
-                "offloads": {
-                    "gro": True,
-                    "gso": False,
-                    "tso": True,
-                    "lro": False
-                },
                 "dscp": [
                     {
                         "match": {"proto": "tcp", "dports": [443]},
                         "dscp": "EF"
                     }
-                ],
-                "mtu": 1500
+                ]
             },
             "validate": {
                 "targets": {"ping": "8.8.8.8"},

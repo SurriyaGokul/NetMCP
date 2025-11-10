@@ -2,14 +2,28 @@ import json
 from .tools.planner import render_change_plan
 from .tools.validator import validate_change_plan
 from .tools.apply.apply import apply_rendered_plan
-from .tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
-# MCP Tools implementation exposure
+from .tools.apply.checkpoints import (
+    snapshot_checkpoint, 
+    rollback_to_checkpoint,
+    list_checkpoints,
+    delete_checkpoint
+)
 from .tools import discovery as _disc
-from .tools.apply import sysctl as _apply_sysctl, tc as _apply_tc, nft as _apply_nft, offloads as _apply_off, mtu as _apply_mtu, iptables as _apply_iptables
+from .tools.apply import (
+    sysctl as _apply_sysctl,
+    tc as _apply_tc,
+    nft as _apply_nft,
+    offloads as _apply_off,
+    mtu as _apply_mtu,
+    iptables as _apply_iptables
+)
 
 def register_resources(mcp, policy_registry):
+    """Register MCP resources for policy configuration cards."""
+    
     @mcp.resource("policy://config_cards/list")
     def get_policy_card_list() -> str:
+        """List all available network optimization configuration cards."""
         cards = policy_registry.list()
         return json.dumps({
             "description": "Available network optimization configuration cards",
@@ -19,144 +33,176 @@ def register_resources(mcp, policy_registry):
     
     @mcp.resource("policy://config_cards/{card_id}")
     def get_policy_card(card_id: str) -> str:
+        """Get detailed information about a specific configuration card."""
         card = policy_registry.get(card_id)
         if not card:
             return json.dumps({"error": f"Configuration card '{card_id}' not found"})
         return json.dumps(card, indent=2)
 
+
 def register_tools(mcp):
     """
-    Register all tools with the FastMCP server using decorators.
-    These tools allow the LLM to plan, validate, and apply network optimizations.
+    Register all MCP tools with the FastMCP server.
+    
+    Tools are organized into categories:
+    - Planning & Validation: render, validate, test, compare
+    - Execution & Safety: apply, checkpoint, rollback
+    - Discovery: 24+ network introspection tools
+    - Direct Apply: sysctl, tc, nft, offloads, mtu
     """
+    
+    # ============================================================================
+    # PLANNING & VALIDATION TOOLS
+    # ============================================================================
+    
     @mcp.tool()
     def render_change_plan_tool(plan: dict) -> dict:
         """
-        Render a ParameterPlan into concrete command lists/scripts. No side effects.
+        Render a ParameterPlan into concrete commands and scripts.
+        
+        Translates high-level optimization goals into executable system commands:
+        - Sysctl: List of 'sysctl -w key=value' commands
+        - TC: Bash script with traffic control commands
+        - Nftables: Complete nftables ruleset script
+        - Ethtool: NIC offload configuration commands
+        - IP: MTU and interface configuration commands
+        
+        This tool has NO side effects - it only generates commands without executing them.
+        Use apply_rendered_plan_tool() to actually apply the changes.
         
         Args:
-            plan: A ParameterPlan dictionary containing the network changes to render
+            plan: ParameterPlan dictionary with iface, profile, changes, rationale
             
         Returns:
-            A RenderedPlan dictionary with executable commands and scripts
+            RenderedPlan with sysctl_cmds, tc_script, nft_script, ethtool_cmds, ip_link_cmds
         """
         return render_change_plan(plan)
     
     @mcp.tool()
     def validate_change_plan_tool(parameter_plan: dict) -> dict:
         """
-        Schema + policy validation for a ParameterPlan.
+        Validate a ParameterPlan against schemas and policies.
+        
+        Performs multi-layer validation:
+        1. Pydantic schema validation (types, required fields)
+        2. Policy enforcement (limits from policy/limits.yaml)
+        3. Interface validation (verify interface exists)
+        4. Config card validation (parameters match specifications)
         
         Args:
-            parameter_plan: A ParameterPlan dictionary to validate
+            parameter_plan: ParameterPlan dictionary to validate
             
         Returns:
-            A ValidationResult with ok status and any issues found
+            ValidationResult with:
+            - ok: bool (True if all validation passed)
+            - issues: list of error messages (empty if ok=True)
+            - normalized_plan: cleaned/normalized ParameterPlan
         """
         return validate_change_plan(parameter_plan)
+    
+    # ============================================================================
+    # EXECUTION & SAFETY TOOLS
+    # ============================================================================
     
     @mcp.tool()
     def apply_rendered_plan_tool(rendered_plan: dict, checkpoint_label: str = None) -> dict:
         """
-        Apply a previously rendered plan atomically, with rollback on failure.
+        Apply a RenderedPlan atomically with automatic rollback on failure.
+        
+        Execution flow:
+        1. Create checkpoint (snapshot current state)
+        2. Execute sysctl commands sequentially
+        3. Execute tc script (traffic control)
+        4. Execute nftables script (firewall/QoS)
+        5. Execute ethtool commands (NIC offloads)
+        6. Execute ip link commands (MTU)
+        7. On any error: automatic rollback to checkpoint
+        
+        Safety features:
+        - Command allowlisting (only approved binaries)
+        - No shell injection (commands as argv arrays)
+        - Atomic operations (all-or-nothing)
+        - Automatic rollback on failure
+        - Detailed execution logging
         
         Args:
-            rendered_plan: A RenderedPlan dictionary with commands to execute
-            checkpoint_label: Optional label for the checkpoint created before applying changes
+            rendered_plan: RenderedPlan from render_change_plan_tool()
+            checkpoint_label: Optional label for the checkpoint
             
         Returns:
-            A ChangeReport with status, errors, and checkpoint information
+            ChangeReport with:
+            - applied: bool (True if all commands succeeded)
+            - errors: list of error messages
+            - checkpoint_id: ID for manual rollback if needed
+            - notes: execution log with ✓/✗ for each command
         """
         return apply_rendered_plan(rendered_plan, checkpoint_label)
     
     @mcp.tool()
     def snapshot_checkpoint_tool(label: str = None) -> dict:
         """
-        Save the current network state for rollback.
+        Create a checkpoint of current network state for rollback.
+        
+        Snapshots include: sysctl parameters, tc qdisc config, nftables rules,
+        NIC offloads, MTU settings. Used for manual checkpointing or testing.
         
         Args:
-            label: Optional label to identify this checkpoint
+            label: Optional descriptive label for this checkpoint
             
         Returns:
-            Dictionary with checkpoint_id and notes
+            dict with checkpoint_id and creation timestamp
         """
         return snapshot_checkpoint(label)
     
     @mcp.tool()
     def rollback_to_checkpoint_tool(checkpoint_id: str) -> dict:
         """
-        Restore a previously saved network state.
+        Restore network configuration from a checkpoint.
+        
+        Reverts all network settings to the state captured in the specified
+        checkpoint. Use list_checkpoints_tool() to see available checkpoints.
         
         Args:
-            checkpoint_id: The ID of the checkpoint to restore
+            checkpoint_id: The checkpoint ID to restore
             
         Returns:
-            Dictionary with ok status and restoration notes
+            dict with ok status, restored settings, and notes
         """
         return rollback_to_checkpoint(checkpoint_id)
     
     @mcp.tool()
     def list_checkpoints_tool() -> dict:
-        """
-        List all available checkpoints with their metadata.
-        
-        Returns:
-            Dictionary with list of checkpoints and their details
-        """
-        from .tools.apply.checkpoints import list_checkpoints
+        """List all available checkpoints with metadata (ID, label, timestamp)."""
         return list_checkpoints()
     
     @mcp.tool()
     def delete_checkpoint_tool(checkpoint_id: str) -> dict:
-        """
-        Delete a specific checkpoint.
-        
-        Args:
-            checkpoint_id: The ID of the checkpoint to delete
-            
-        Returns:
-            Dictionary with deletion status
-        """
-        from .tools.apply.checkpoints import delete_checkpoint
+        """Delete a specific checkpoint to free up storage."""
         return delete_checkpoint(checkpoint_id)
-       
+    
+    # ============================================================================
+    # PERFORMANCE TESTING & VALIDATION
+    # ============================================================================
+    
     @mcp.tool()
     def test_network_performance_tool(profile: str = "gaming") -> dict:
         """
-        Run network performance tests to establish baseline or validate changes.
+        Run comprehensive network performance benchmarks.
         
-        Args:
-            profile: Test profile to use (gaming, throughput, balanced, low-latency)
-                - gaming: Focus on latency and jitter (20-30 pings)
-                - throughput: Focus on bandwidth (includes iperf3 if available)
-                - balanced: Mixed tests with moderate samples
-                - low-latency: Ultra-strict latency testing
-        
-        Returns:
-            {
-                "profile": str,
-                "timestamp": str,
-                "tests": {
-                    "latency": {
-                        "available": bool,
-                        "avg_ms": float,
-                        "min_ms": float,
-                        "max_ms": float,
-                        "jitter_ms": float,
-                        "packet_loss_percent": float,
-                        "message": str
-                    },
-                    "connection_time": {...},
-                    "dns_resolution": {...},
-                    "throughput": {...}  # Optional
-                },
-                "summary": str
-            }
+        Test suites by profile:
+        - gaming: Focus on latency and jitter (20-30 pings, DNS timing, connection speed)
+        - throughput: Bandwidth tests with iperf3 if available
+        - balanced: Mixed tests with moderate samples
+        - low-latency: Ultra-strict latency testing
         
         Use cases:
-            - Establish performance baseline before making changes
-            - Quick validation after applying configuration
-            - Troubleshooting network issues
+        - Establish baseline before making changes
+        - Validate improvements after optimization
+        - Troubleshoot network issues
+        
+        Returns:
+            dict with latency, jitter, packet loss, DNS resolution, connection time,
+            and optional throughput metrics
         """
         from .tools.validation_metrics import run_full_benchmark
         return run_full_benchmark(profile)
@@ -164,17 +210,11 @@ def register_tools(mcp):
     @mcp.tool()
     def quick_latency_test_tool() -> dict:
         """
-        Quick latency test (10 pings) for rapid validation.
-        Useful for fast before/after comparisons during interactive optimization.
+        Quick 10-ping latency test for rapid before/after comparisons.
+        Useful during interactive optimization sessions.
         
         Returns:
-            {
-                "available": bool,
-                "avg_ms": float,
-                "jitter_ms": float,
-                "packet_loss_percent": float,
-                "message": str
-            }
+            dict with avg_ms, jitter_ms, packet_loss_percent
         """
         from .tools.validation_metrics import quick_latency_test
         return quick_latency_test()
@@ -186,41 +226,22 @@ def register_tools(mcp):
         profile: str = "gaming"
     ) -> dict:
         """
-        Compare before/after performance benchmarks and decide if changes improved performance.
-        
-        Args:
-            before_results: Benchmark results from test_network_performance_tool() BEFORE changes
-            after_results: Benchmark results from test_network_performance_tool() AFTER changes
-            profile: Validation profile (gaming, throughput, balanced, low-latency)
-        
-        Returns:
-            {
-                "decision": "KEEP" | "ROLLBACK" | "UNCERTAIN",
-                "score": int (0-100),
-                "summary": str,
-                "reasons": [str],  # Detailed explanation of decision
-                "metrics_comparison": {
-                    "latency_before_ms": float,
-                    "latency_after_ms": float,
-                    "latency_change_ms": float,
-                    "latency_change_percent": float,
-                    ...
-                },
-                "profile": str,
-                "before_timestamp": str,
-                "after_timestamp": str
-            }
+        Compare before/after performance and decide: KEEP, ROLLBACK, or UNCERTAIN.
         
         Decision logic by profile:
-            - gaming: Prioritizes latency (40%), jitter (30%), packet loss (20%), connection time (10%)
-            - throughput: Prioritizes bandwidth (50%), latency stability (20%), retransmits (20%), connection (10%)
-            - balanced: Equal weight to latency and throughput concerns
-            - low-latency: Ultra-strict on latency (avg 50%, max 50%), any increase is bad
+        - gaming: Prioritizes latency (40%), jitter (30%), packet loss (20%), connection time (10%)
+        - throughput: Prioritizes bandwidth (50%), stability (20%), retransmits (20%), connection (10%)
+        - balanced: Equal weight to latency and throughput
+        - low-latency: Ultra-strict on latency (any increase triggers ROLLBACK)
         
-        Use cases:
-            - Automated validation after applying network changes
-            - Determining if optimizations actually improved performance
-            - Making intelligent rollback decisions
+        Args:
+            before_results: Output from test_network_performance_tool() BEFORE changes
+            after_results: Output from test_network_performance_tool() AFTER changes
+            profile: Validation profile (gaming, throughput, balanced, low-latency)
+            
+        Returns:
+            dict with decision (KEEP/ROLLBACK/UNCERTAIN), score (0-100), summary,
+            detailed reasons, and metrics comparison
         """
         from .tools.validation_engine import ValidationEngine
         return ValidationEngine.compare_benchmarks(before_results, after_results, profile)
@@ -234,23 +255,21 @@ def register_tools(mcp):
         auto_rollback: bool = True
     ) -> dict:
         """
-        Validate configuration changes and automatically rollback if performance degraded.
+        Validate changes and automatically rollback if performance degraded.
         
-        This is a convenience tool that combines validation and rollback in one step.
+        Combines validate_configuration_changes_tool() + rollback_to_checkpoint_tool()
+        for automated testing workflows.
         
         Args:
-            checkpoint_id: The checkpoint ID to rollback to if validation fails
-            before_results: Benchmark results before changes
-            after_results: Benchmark results after changes
+            checkpoint_id: Checkpoint to rollback to if validation fails
+            before_results: Benchmark before changes
+            after_results: Benchmark after changes
             profile: Validation profile
             auto_rollback: If True, automatically rollback on ROLLBACK decision
-        
+            
         Returns:
-            {
-                "validation": {...},  # Full validation result
-                "action_taken": "KEPT" | "ROLLED_BACK" | "NO_ACTION",
-                "rollback_result": {...}  # Only present if rolled back
-            }
+            dict with validation results, action_taken (KEPT/ROLLED_BACK/NO_ACTION),
+            and optional rollback_result
         """
         from .tools.validation_engine import ValidationEngine
         
@@ -277,630 +296,211 @@ def register_tools(mcp):
         
         result["action_taken"] = action_taken
         return result
-
-    # --- Discovery tools ---
+    
+    # ============================================================================
+    # DISCOVERY TOOLS
+    # ============================================================================
     
     # Network Interface Discovery
-    
     @mcp.tool()
     def ip_info() -> dict:
-        """
-        Retrieve all network interfaces and their IP addresses.
-        
-        Executes: ip addr show
-        
-        Returns:
-            dict: Network interface information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Interface names, MAC addresses, and IP addresses (IPv4/IPv6)
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Identify all available network interfaces on the system
-            - Check assigned IP addresses (both IPv4 and IPv6)
-            - Verify interface naming conventions (eth0, wlan0, etc.)
-            - Baseline discovery for network optimization
-        
-        Prerequisites: No additional tools required (ip command is standard)
-        """
+        """Network interfaces and IP addresses (ip addr show)"""
         return _disc.ip_info()
-
+    
     @mcp.tool()
     def eth_info(iface: str = "eth0") -> dict:
-        """
-        Query interface hardware capabilities and driver information.
-        
-        Executes: ethtool <iface>
-        
-        Args:
-            iface: str - Network interface name (default: "eth0")
-        
-        Returns:
-            dict: Hardware and driver details including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Link speed, duplex mode, driver name, and capabilities
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Check interface speed and duplex settings (1Gbps, 10Gbps, full/half duplex)
-            - Identify driver version and firmware information
-            - Verify supported offload capabilities (TSO, GSO, LRO, GRO, RXCSUM, TXCSUM)
-            - Diagnose hardware incompatibilities before optimization
-        
-        Prerequisites: ethtool utility (usually in /usr/sbin; may need to be added to PATH)
-        """
+        """Interface hardware capabilities and driver info (ethtool <iface>)"""
         return _disc.eth_info(iface)
-
+    
     @mcp.tool()
     def hostname_ips() -> dict:
-        """
-        Get all IP addresses associated with the local hostname.
-        
-        Executes: hostname -I
-        
-        Returns:
-            dict: Host IP addresses including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Space-separated list of IP addresses
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Quick check of assigned IPs without parsing full interface details
-            - Verify hostname resolution
-            - List all active IPs for connectivity validation
-        
-        Prerequisites: No additional tools required
-        """
+        """All IP addresses for local hostname (hostname -I)"""
         return _disc.hostname_ips()
-
+    
     @mcp.tool()
     def hostnamectl() -> dict:
-        """
-        Retrieve system hostname and OS metadata.
-        
-        Executes: hostnamectl status
-        
-        Returns:
-            dict: System identification including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Hostname(s), operating system, kernel version, architecture
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Identify system for network policy application
-            - Verify OS compatibility with optimization techniques
-            - Collect baseline hardware architecture information
-        
-        Prerequisites: No additional tools required (systemd standard)
-        """
+        """System hostname and OS metadata (hostnamectl status)"""
         return _disc.hostnamectl()
-
-    # Network Manager & Wireless Discovery
     
+    # Network Manager & Wireless
     @mcp.tool()
     def nmcli_status() -> dict:
-        """
-        Query NetworkManager device connection status.
-        
-        Executes: nmcli device status
-        
-        Returns:
-            dict: Device and connection information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Device names, connection types, and status
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Check which interfaces are managed by NetworkManager
-            - Verify active connections and their types (ethernet, wifi, vpn)
-            - Troubleshoot connectivity issues
-        
-        Prerequisites: NetworkManager and nmcli utility must be installed
-        Note: Fails gracefully if NetworkManager is not running
-        """
+        """NetworkManager device connection status (nmcli device status)"""
         return _disc.nmcli_status()
-
-    @mcp.tool()
-    def iwconfig(iface: str = "wlan0") -> dict:
-        """
-        Retrieve wireless interface parameters and configuration.
-        
-        Executes: iwconfig <iface>
-        
-        Args:
-            iface: str - Wireless interface name (default: "wlan0")
-        
-        Returns:
-            dict: Wireless configuration including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - ESSID, frequency, signal strength, transmission power, encryption
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Check wireless signal strength and quality
-            - Verify Wi-Fi frequency band (2.4 GHz vs 5 GHz)
-            - Identify encryption method (WEP, WPA, WPA2, WPA3)
-            - Diagnose Wi-Fi connectivity issues
-        
-        Prerequisites: wireless-tools package must be installed
-        """
-        return _disc.iwconfig(iface)
-
-    @mcp.tool()
-    def iwlist_scan(iface: str = "wlan0", subcmd: str = "scan") -> dict:
-        """
-        Scan for available wireless networks or retrieve detailed Wi-Fi information.
-        
-        Executes: iwlist <iface> <subcmd>
-        
-        Args:
-            iface: str - Wireless interface name (default: "wlan0")
-            subcmd: str - Subcommand to execute (default: "scan"; others: "freq", "keys", etc.)
-        
-        Returns:
-            dict: Wireless network information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - List of available networks with SSID, frequency, signal level, security
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - List available wireless networks in range
-            - Discover channel congestion and interference
-            - Check available security standards (WEP, WPA2, WPA3)
-            - Plan Wi-Fi channel optimization
-        
-        Prerequisites: wireless-tools package must be installed
-        Note: May require elevated privileges (root) to scan
-        Note: Timeout set to 10s as scanning can take longer than typical commands
-        """
-        return _disc.iwlist_scan(iface, subcmd)
-
-    # ARP & Neighbor Discovery
     
     @mcp.tool()
+    def iwconfig(iface: str = "wlan0") -> dict:
+        """Wireless interface parameters (iwconfig <iface>)"""
+        return _disc.iwconfig(iface)
+    
+    @mcp.tool()
+    def iwlist_scan(iface: str = "wlan0", subcmd: str = "scan") -> dict:
+        """Scan for available wireless networks (iwlist <iface> scan)"""
+        return _disc.iwlist_scan(iface, subcmd)
+    
+    # ARP & Neighbor Discovery
+    @mcp.tool()
     def arp_table() -> dict:
-        """
-        Display the system ARP (Address Resolution Protocol) table.
-        
-        Executes: arp -n
-        
-        Returns:
-            dict: ARP entries including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - IP-to-MAC address mappings, interface names, types
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Verify neighboring hosts and their MAC addresses
-            - Detect ARP spoofing or suspicious MAC addresses
-            - Understand local network topology
-            - Troubleshoot Layer 2 connectivity issues
-        
-        Prerequisites: net-tools package may need to be installed
-        Note: This tool shows cached entries; does not create new ARP requests
-        """
+        """ARP table with IP-to-MAC mappings (arp -n)"""
         return _disc.arp_table()
-
+    
     @mcp.tool()
     def ip_neigh() -> dict:
-        """
-        Display the neighbor cache including ARP (IPv4) and NDP (IPv6) entries.
-        
-        Executes: ip neigh show
-        
-        Returns:
-            dict: Neighbor cache information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - IP addresses, MAC addresses, states (REACHABLE, STALE, FAILED), interfaces
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Check neighbor states for IPv4 and IPv6
-            - Identify unreachable neighbors
-            - Monitor neighbor state transitions
-            - Troubleshoot IPv6 connectivity
-        
-        Prerequisites: No additional tools required (iproute2 standard)
-        Advantage over arp_table: Supports both IPv4 and IPv6; shows neighbor states
-        """
+        """Neighbor cache for ARP and NDP (ip neigh show)"""
         return _disc.ip_neigh()
-
-    # Routing Discovery
     
     @mcp.tool()
     def ip_route() -> dict:
-        """
-        Display the system routing table.
-        
-        Executes: ip route show
-        
-        Returns:
-            dict: Routing information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Destination networks, gateways, metrics, interfaces, protocols
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Verify default gateway and routing paths
-            - Check policy-based routing rules
-            - Identify asymmetric routing issues
-            - Plan network optimization based on routing topology
-        
-        Prerequisites: No additional tools required (iproute2 standard)
-        """
+        """Routing table (ip route show)"""
         return _disc.ip_route()
-
-    # DNS Discovery
     
+    # DNS Resolution
     @mcp.tool()
     def resolvectl_status() -> dict:
-        """
-        Query systemd-resolved DNS resolver status and configuration.
-        
-        Executes: resolvectl status
-        
-        Returns:
-            dict: DNS resolver information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Configured DNS servers, search domains, DNSSEC settings, cache statistics
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Check DNS servers in use (system-wide and per-interface)
-            - Verify DNSSEC validation status
-            - Monitor DNS cache performance
-            - Troubleshoot DNS resolution issues
-        
-        Prerequisites: systemd-resolved must be running
-        Note: Provides more detailed information than /etc/resolv.conf on systemd systems
-        """
+        """DNS resolver configuration (resolvectl status)"""
         return _disc.resolvectl_status()
-
+    
     @mcp.tool()
     def cat_resolv_conf() -> dict:
-        """
-        Display the static DNS resolver configuration file.
-        
-        Executes: cat /etc/resolv.conf
-        
-        Returns:
-            dict: Resolver configuration including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - nameserver entries, options, search domains
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Check configured DNS servers on traditional systems
-            - Verify resolver configuration for troubleshooting
-            - Identify custom DNS settings
-        
-        Prerequisites: No additional tools required
-        Note: On systemd systems, this file may be a symlink to systemd-resolved config
-        """
+        """/etc/resolv.conf contents (cat /etc/resolv.conf)"""
         return _disc.cat_resolv_conf()
-
+    
     @mcp.tool()
     def dig(domain: str, dns: str | None = None) -> dict:
-        """
-        Perform a DNS query using the dig (Domain Information Groper) tool.
-        
-        Executes: dig [@dns] <domain>
-        
-        Args:
-            domain: str - Domain name to query (e.g., "example.com")
-            dns: str | None - Optional specific DNS server to query (e.g., "8.8.8.8")
-        
-        Returns:
-            dict: DNS query results including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Query response with section headers (QUESTION, ANSWER, AUTHORITY, ADDITIONAL)
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Verify DNS resolution works correctly
-            - Test specific DNS servers
-            - Debug DNS propagation issues
-            - Check DNS record types (A, AAAA, MX, CNAME, TXT, NS, etc.)
-            - Diagnose DNS performance problems
-        
-        Prerequisites: dnsutils or bind9-host package must be installed
-        """
+        """DNS query with dig (dig [@dns] <domain>)"""
         return _disc.dig(domain, dns)
-
+    
     @mcp.tool()
     def host(domain: str) -> dict:
-        """
-        Perform a simple DNS lookup using the host utility.
-        
-        Executes: host <domain>
-        
-        Args:
-            domain: str - Domain name to look up (e.g., "example.com")
-        
-        Returns:
-            dict: DNS lookup results including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Resolved IP address(es) and any additional records
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Quick DNS resolution check
-            - Verify A and AAAA records
-            - Simple domain-to-IP translation
-            - Lightweight alternative to dig for basic queries
-        
-        Prerequisites: bind9-host package must be installed
-        """
+        """Simple DNS lookup (host <domain>)"""
         return _disc.host(domain)
-
+    
     @mcp.tool()
     def nslookup(domain: str) -> dict:
-        """
-        Perform a DNS query using the legacy nslookup utility.
-        
-        Executes: nslookup <domain>
-        
-        Args:
-            domain: str - Domain name to query (e.g., "example.com")
-        
-        Returns:
-            dict: DNS query results including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Query response in nslookup format (server info, addresses)
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Legacy DNS queries for compatibility
-            - Interactive-like DNS lookups
-            - Cross-platform DNS verification
-        
-        Prerequisites: dnsutils package must be installed
-        Note: Considered legacy; dig and host are generally preferred for scripting
-        """
+        """Legacy DNS query (nslookup <domain>)"""
         return _disc.nslookup(domain)
-
-    # Connectivity & Latency Discovery
     
+    # Connectivity & Latency
     @mcp.tool()
     def ping_host(address: str, count: int = 3) -> dict:
-        """
-        Test ICMP reachability and measure latency to a host.
-        
-        Executes: ping -c <count> <addr>
-        
-        Args:
-            address: str - Target IP address or hostname (e.g., "8.8.8.8", "example.com")
-            count: int - Number of ICMP echo requests to send (default: 3)
-        
-        Returns:
-            dict: ICMP ping results including:
-                - ok: bool - Success status
-                - code: int - Command exit code (0 = all packets received, 1 = some lost)
-                - stdout: str - Packet statistics, min/avg/max/stddev latency
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Verify host reachability
-            - Measure round-trip latency and jitter
-            - Detect packet loss
-            - Test network connectivity before optimization
-        
-        Prerequisites: No additional tools required (ping is standard)
-        Note: Timeout is automatically adjusted based on count (5s + count seconds)
-        """
+        """ICMP reachability and latency test (ping -c <count> <address>)"""
         return _disc.ping_host(address, count)
-
-    @mcp.tool()
-    def traceroute(host: str) -> dict:
-        """
-        Trace the network path to a destination host using UDP packets.
-        
-        Executes: traceroute <host>
-        
-        Args:
-            host: str - Target hostname or IP address
-        
-        Returns:
-            dict: Traceroute results including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Sequence of hops with hostnames, IP addresses, and latencies
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Identify network hops and routing path to destination
-            - Diagnose routing issues or asymmetric paths
-            - Locate latency bottlenecks in network path
-            - Detect MTU/fragmentation issues
-        
-        Prerequisites: traceroute package must be installed
-        Note: May require elevated privileges (root) or special permissions
-        Note: Timeout set to 20s as traceroute can be slow
-        Note: Uses UDP probes by default (may be blocked by some firewalls)
-        """
-        return _disc.traceroute(host)
-
-    @mcp.tool()
-    def tracepath(host: str) -> dict:
-        """
-        Trace network path to a destination without requiring elevated privileges.
-        
-        Executes: tracepath <host>
-        
-        Args:
-            host: str - Target hostname or IP address
-        
-        Returns:
-            dict: Tracepath results including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Sequence of hops with latencies and path information
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Trace path to destination (non-root alternative to traceroute)
-            - Diagnose routing and MTU issues
-            - Identify latency-contributing hops
-            - Works in unprivileged containers and sandboxes
-        
-        Prerequisites: iputils-tracepath package must be installed
-        Advantage over traceroute: Does not require root privileges
-        Note: Timeout set to 20s as tracepath can be slow
-        """
-        return _disc.tracepath(host)
-
-    # Socket & Connection Discovery
     
+    @mcp.tool()
+    def traceroute(domain: str) -> dict:
+        """Trace network path (traceroute <host>)"""
+        return _disc.traceroute(domain)
+    
+    @mcp.tool()
+    def tracepath(domain: str) -> dict:
+        """Trace path without root (tracepath <host>)"""
+        return _disc.tracepath(domain)
+    
+    # Sockets & Connections
     @mcp.tool()
     def ss_summary(options: str = "tulwn") -> dict:
-        """
-        Display active sockets and connections using the ss utility.
-        
-        Executes: ss -<options>
-        
-        Args:
-            options: str - ss command flags (default: "tulwn")
-                - t: TCP sockets
-                - u: UDP sockets
-                - l: Listening sockets
-                - w: Raw sockets
-                - n: Numeric addresses/ports
-                - Additional options: a (all), p (processes), s (statistics), etc.
-        
-        Returns:
-            dict: Socket and connection information including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Socket state, source/dest IP:port, associated processes
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - List active TCP/UDP connections
-            - Check listening ports and services
-            - Monitor socket states (ESTABLISHED, TIME_WAIT, etc.)
-            - Troubleshoot connection issues
-            - Verify firewall/NAT configuration effects
-        
-        Prerequisites: No additional tools required (iproute2 standard)
-        Note: Default options (tulwn) show TCP, UDP, listening, raw, and numeric output
-        """
+        """Socket statistics and connections (ss -<options>)"""
         return _disc.ss_summary(options)
-
-    # Traffic Control Discovery
     
+    # Traffic Control
     @mcp.tool()
     def tc_qdisc_show(iface: str) -> dict:
-        """
-        Display Traffic Control (tc) queue discipline (qdisc) configuration and statistics.
-        
-        Executes: tc -s qdisc show dev <iface>
-        
-        Args:
-            iface: str - Network interface name (e.g., "eth0", "wlan0")
-        
-        Returns:
-            dict: Qdisc configuration and statistics including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Qdisc type, parameters, backlog, drops, overlimits
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Verify current qdisc (pfifo_fast, HTB, fq, cake, etc.)
-            - Check queue statistics (packets dropped, backlog size)
-            - Monitor QoS performance
-            - Diagnose buffering issues
-        
-        Prerequisites: iproute2 with tc support (standard)
-        """
+        """Traffic control qdisc config and stats (tc -s qdisc show dev <iface>)"""
         return _disc.tc_qdisc_show(iface)
-
-    # Firewall & Filtering Discovery
     
+    # Firewall & Filtering
     @mcp.tool()
     def nft_list_ruleset() -> dict:
-        """
-        Display the complete nftables firewall ruleset.
-        
-        Executes: nft list ruleset
-        
-        Returns:
-            dict: Nftables ruleset including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Tables, chains, rules with match conditions and actions
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Inspect nftables firewall rules
-            - Verify rule application before optimization
-            - Diagnose packet filtering issues
-            - Baseline firewall configuration
-        
-        Prerequisites: nftables package must be installed
-        Note: Requires root/elevated privileges to execute
-        """
+        """Nftables firewall ruleset (nft list ruleset)"""
         return _disc.nft_list_ruleset()
-
+    
     @mcp.tool()
     def iptables_list() -> dict:
-        """
-        Display the iptables firewall rules and packet statistics.
-        
-        Executes: iptables -L -v -n
-        
-        Returns:
-            dict: Iptables rules including:
-                - ok: bool - Success status
-                - code: int - Command exit code
-                - stdout: str - Chain names, rules with targets, packet/byte counters
-                - stderr: str - Error message if command failed
-        
-        Use cases:
-            - Inspect legacy iptables firewall configuration
-            - Verify packet filtering and NAT rules
-            - Monitor packet/byte counters
-            - Troubleshoot firewall-related performance issues
-        
-        Prerequisites: iptables package must be installed
-        Note: Requires root/elevated privileges to execute
-        Note: Use nft_list_ruleset for modern systems using nftables backend
-        """
+        """Iptables firewall rules (iptables -L -v -n)"""
         return _disc.iptables_list()
-
-    # --- Apply tools ---
+    
+    # ============================================================================
+    # DIRECT APPLY TOOLS
+    # ============================================================================
+    
     @mcp.tool()
     def set_sysctl(kv: dict[str, str]) -> dict:
+        """
+        Apply sysctl kernel parameters directly.
+        
+        Executes 'sysctl -w key=value' for each parameter in sorted order.
+        Stops on first error and returns partial results.
+        
+        Args:
+            kv: Dictionary of sysctl parameter names to values
+                Example: {"net.ipv4.tcp_congestion_control": "bbr", ...}
+                
+        Returns:
+            dict with ok status, exit code, stdout, stderr
+        """
         return _apply_sysctl.set_sysctl(kv)
-
+    
     @mcp.tool()
     def apply_tc_script(lines: list[str]) -> dict:
+        """
+        Execute traffic control (tc) commands from a script.
+        
+        Runs each tc command line sequentially. Use for qdisc, class, and filter
+        configuration. Commands should not include shebang or comments.
+        
+        Args:
+            lines: List of tc command strings (e.g., ["tc qdisc add dev eth0 root fq", ...])
+            
+        Returns:
+            dict with ok status, exit code, stdout, stderr
+        """
         return _apply_tc.apply_tc_script(lines)
-
+    
     @mcp.tool()
     def apply_nft_ruleset(ruleset: str) -> dict:
+        """
+        Apply a complete nftables ruleset via 'nft -f'.
+        
+        The ruleset should be a complete nftables configuration with tables,
+        chains, and rules. Use flush rules to clear existing state if needed.
+        
+        Args:
+            ruleset: Complete nftables configuration as string
+            
+        Returns:
+            dict with ok status, exit code, stdout, stderr
+        """
         return _apply_nft.apply_nft_ruleset(ruleset)
-
+    
     @mcp.tool()
     def set_nic_offloads(iface: str, flags: dict[str, bool]) -> dict:
+        """
+        Configure NIC hardware offload features via ethtool.
+        
+        Common offloads: gro, gso, tso, lro, rx, tx, rxvlan, txvlan
+        
+        Args:
+            iface: Network interface name (e.g., "eth0")
+            flags: Dictionary of offload names to boolean values
+                Example: {"gro": True, "lro": False}
+                
+        Returns:
+            dict with ok status, exit code, stdout, stderr
+        """
         return _apply_off.set_nic_offloads(iface, flags)
-
+    
     @mcp.tool()
     def set_mtu(iface: str, mtu: int) -> dict:
+        """
+        Set interface MTU (Maximum Transmission Unit).
+        
+        Typical values: 1500 (default), 9000 (jumbo frames)
+        
+        Args:
+            iface: Network interface name (e.g., "eth0")
+            mtu: MTU size in bytes (typically 1500-9000)
+            
+        Returns:
+            dict with ok status, exit code, stdout, stderr
+        """
         return _apply_mtu.set_mtu(iface, mtu)
-

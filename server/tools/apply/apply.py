@@ -97,40 +97,6 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
             applied_steps.append(("nft", "script"))
             notes.append("✓ nftables script applied successfully")
         
-        # 4. Apply ethtool commands
-        if plan.ethtool_cmds:
-            notes.append(f"Applying {len(plan.ethtool_cmds)} ethtool commands")
-            for cmd in plan.ethtool_cmds:
-                # Parse ethtool command: "ethtool -K iface param state"
-                parts = cmd.split()
-                if len(parts) >= 5 and parts[0] == "ethtool":
-                    r = run(parts, timeout=10)
-                    if not r.get("ok"):
-                        errors.append(f"ethtool failed: {cmd} - {r.get('stderr','')}")
-                        raise RuntimeError("ethtool command failed")
-                    applied_steps.append(("ethtool", cmd))
-                    notes.append(f"✓ {cmd}")
-                else:
-                    errors.append(f"Invalid ethtool command format: {cmd}")
-                    raise ValueError(f"Invalid ethtool command format: {cmd}")
-        
-        # 5. Apply ip link commands
-        if plan.ip_link_cmds:
-            notes.append(f"Applying {len(plan.ip_link_cmds)} ip link commands")
-            for cmd in plan.ip_link_cmds:
-                # Parse ip link command: "ip link set dev iface mtu value"
-                parts = cmd.split()
-                if len(parts) >= 6 and parts[0] == "ip" and parts[1] == "link":
-                    r = run(parts, timeout=10)
-                    if not r.get("ok"):
-                        errors.append(f"ip link failed: {cmd} - {r.get('stderr','')}")
-                        raise RuntimeError("ip link command failed")
-                    applied_steps.append(("ip", cmd))
-                    notes.append(f"✓ {cmd}")
-                else:
-                    errors.append(f"Invalid ip command format: {cmd}")
-                    raise ValueError(f"Invalid ip command format: {cmd}")
-        
         # Success
         notes.append(f"All changes applied successfully ({len(applied_steps)} operations)")
         return {

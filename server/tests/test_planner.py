@@ -51,12 +51,6 @@ class TestPlanner(unittest.TestCase):
                     "net.core.default_qdisc": "fq",
                     "net.ipv4.tcp_window_scaling": "1"
                 },
-                "offloads": {
-                    "gro": True,
-                    "gso": False,
-                    "tso": True,
-                    "lro": False
-                },
                 "dscp": [
                     {
                         "match": {"proto": "tcp", "dports": [443]},
@@ -66,8 +60,7 @@ class TestPlanner(unittest.TestCase):
                         "match": {"proto": "udp", "dports": [53]},
                         "dscp": "CS5"
                     }
-                ],
-                "mtu": 1500
+                ]
             }
         }
     
@@ -149,31 +142,7 @@ class TestPlanner(unittest.TestCase):
             self.assertEqual(orders[0], orders[i], 
                            "Sysctl command order is not stable")
     
-    def test_ethtool_command_order(self):
-        """Test that ethtool commands maintain consistent order"""
-        plan = {
-            "iface": "eth0",
-            "profile": "gaming",
-            "changes": {
-                "offloads": {
-                    "gro": True,
-                    "gso": False,
-                    "tso": True,
-                    "lro": False
-                }
-            }
-        }
-        
-        # Run multiple times and check order consistency
-        orders = []
-        for _ in range(5):
-            result = render_change_plan(plan)
-            orders.append(result["ethtool_cmds"])
-        
-        # All orders should be identical
-        for i in range(1, len(orders)):
-            self.assertEqual(orders[0], orders[i], 
-                           "Ethtool command order is not stable")
+    # Tests for different interface names
     
     def test_dscp_rule_order(self):
         """Test that DSCP rules maintain consistent order"""
@@ -315,7 +284,9 @@ class TestPlanner(unittest.TestCase):
                     "iface": iface,
                     "profile": "gaming",
                     "changes": {
-                        "mtu": 1500
+                        "sysctl": {
+                            "net.ipv4.tcp_congestion_control": "bbr"
+                        }
                     }
                 }
                 
@@ -408,7 +379,9 @@ class TestPlanner(unittest.TestCase):
             "iface": "eth0",
             "profile": "gaming",
             "changes": {
-                "mtu": 1500
+                "sysctl": {
+                    "net.ipv4.tcp_congestion_control": "bbr"
+                }
             }
         }
         
@@ -416,7 +389,9 @@ class TestPlanner(unittest.TestCase):
             "iface": "eth0",
             "profile": "gaming",
             "changes": {
-                "mtu": 9000
+                "sysctl": {
+                    "net.ipv4.tcp_congestion_control": "cubic"
+                }
             }
         }
         

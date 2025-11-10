@@ -51,14 +51,6 @@ def render_change_plan(plan: dict) -> dict:
     if nft_sections:
         rendered.nft_script = _render_nft(iface, nft_sections)
     
-    # Render ethtool commands for offloads
-    if changes.offloads:
-        rendered.ethtool_cmds = _render_ethtool(iface, changes.offloads)
-    
-    # Render ip link commands for MTU
-    if changes.mtu:
-        rendered.ip_link_cmds = _render_ip_link(iface, changes.mtu)
-    
     # Handle connection tracking via sysctl
     if changes.connection_tracking:
         tracking_sysctls = _render_connection_tracking(changes.connection_tracking)
@@ -386,31 +378,6 @@ def _render_nft(iface: str, sections: list) -> str:
     return "\n".join(lines)
 
 
-def _render_ethtool(iface: str, offloads) -> list:
-    """Render ethtool commands for offload settings."""
-    commands = []
-    
-    offload_map = {
-        "gro": "gro",
-        "gso": "gso",
-        "tso": "tso",
-        "lro": "lro"
-    }
-    
-    for field, ethtool_name in offload_map.items():
-        value = getattr(offloads, field, None)
-        if value is not None:
-            state = "on" if value else "off"
-            commands.append(f"ethtool -K {iface} {ethtool_name} {state}")
-    
-    return commands
-
-
-def _render_ip_link(iface: str, mtu: int) -> list:
-    """Render ip link command for MTU setting."""
-    return [f"ip link set dev {iface} mtu {mtu}"]
-
-
 def _render_connection_tracking(tracking) -> list:
     """Render sysctl commands for connection tracking configuration."""
     commands = []
@@ -444,15 +411,3 @@ def render_cake_root(iface: str, bandwidth_mbit: int, diffserv: bool = True, ecn
     if ecn:
         parts.append("ecn")
     return [" ".join(parts)]
-
-def render_offloads(iface: str, flags: dict[str, bool]) -> list[str]:
-    """Render ethtool -K lines for selected flags."""
-    out: list[str] = []
-    for k in ["gro", "gso", "tso", "lro"]:
-        if k in flags:
-            out.append(f"ethtool -K {iface} {k} {'on' if flags[k] else 'off'}")
-    return out
-
-def render_ip_link(iface: str, mtu: int | None) -> list[str]:
-    """Render ip link set dev <iface> mtu <mtu> if provided."""
-    return [f"ip link set dev {iface} mtu {mtu}"] if mtu else []
