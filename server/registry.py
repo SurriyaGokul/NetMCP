@@ -49,12 +49,7 @@ def register_tools(mcp):
     - Execution & Safety: apply, checkpoint, rollback
     - Discovery: 24+ network introspection tools
     - Direct Apply: sysctl, tc, nft, offloads, mtu
-    """
-    
-    # ============================================================================
-    # PLANNING & VALIDATION TOOLS
-    # ============================================================================
-    
+    """    
     @mcp.tool()
     def render_change_plan_tool(plan: dict) -> dict:
         """
@@ -99,10 +94,6 @@ def register_tools(mcp):
             - normalized_plan: cleaned/normalized ParameterPlan
         """
         return validate_change_plan(parameter_plan)
-    
-    # ============================================================================
-    # EXECUTION & SAFETY TOOLS
-    # ============================================================================
     
     @mcp.tool()
     def apply_rendered_plan_tool(rendered_plan: dict, checkpoint_label: str = None) -> dict:
@@ -472,35 +463,3 @@ def register_tools(mcp):
         """
         return _apply_nft.apply_nft_ruleset(ruleset)
     
-    @mcp.tool()
-    def set_nic_offloads(iface: str, flags: dict[str, bool]) -> dict:
-        """
-        Configure NIC hardware offload features via ethtool.
-        
-        Common offloads: gro, gso, tso, lro, rx, tx, rxvlan, txvlan
-        
-        Args:
-            iface: Network interface name (e.g., "eth0")
-            flags: Dictionary of offload names to boolean values
-                Example: {"gro": True, "lro": False}
-                
-        Returns:
-            dict with ok status, exit code, stdout, stderr
-        """
-        return _apply_off.set_nic_offloads(iface, flags)
-    
-    @mcp.tool()
-    def set_mtu(iface: str, mtu: int) -> dict:
-        """
-        Set interface MTU (Maximum Transmission Unit).
-        
-        Typical values: 1500 (default), 9000 (jumbo frames)
-        
-        Args:
-            iface: Network interface name (e.g., "eth0")
-            mtu: MTU size in bytes (typically 1500-9000)
-            
-        Returns:
-            dict with ok status, exit code, stdout, stderr
-        """
-        return _apply_mtu.set_mtu(iface, mtu)
