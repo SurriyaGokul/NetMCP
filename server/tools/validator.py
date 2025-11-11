@@ -2,6 +2,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 from ..schema.models import ParameterPlan
+from .audit_log import log_plan_validation
 
 # Cache for validation limits (loaded once)
 _validation_limits_cache: Dict[str, Any] = None
@@ -149,6 +150,10 @@ def validate_change_plan(parameter_plan: dict) -> dict:
             errors.append(f"Unknown keys in offloads: {', '.join(sorted(unknown_offload_keys))}")
     
     if errors:
-        return {"ok": False, "errors": errors, "plan": None}
+        result = {"ok": False, "errors": errors, "plan": None}
+        log_plan_validation(parameter_plan, result)
+        return result
     
-    return {"ok": True, "errors": [], "plan": validated_plan.model_dump()}
+    result = {"ok": True, "errors": [], "plan": validated_plan.model_dump()}
+    log_plan_validation(parameter_plan, result)
+    return result

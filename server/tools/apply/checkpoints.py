@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 from ..util.shell import run, run_privileged
+from ..audit_log import log_rollback
 
 
 # Checkpoint storage location
@@ -329,27 +330,33 @@ def rollback_to_checkpoint(checkpoint_id: str) -> dict:
                             break
         
         if errors:
-            return {
+            result = {
                 "ok": False,
                 "restored": True,  # Partial restoration
                 "notes": notes,
                 "errors": errors
             }
+            log_rollback(checkpoint_id, False, notes)
+            return result
         
-        return {
+        result = {
             "ok": True,
             "restored": True,
             "notes": notes,
             "errors": []
         }
+        log_rollback(checkpoint_id, True, notes)
+        return result
         
     except Exception as e:
-        return {
+        result = {
             "ok": False,
             "restored": False,
             "notes": notes,
             "errors": errors + [f"Rollback failed: {str(e)}"]
         }
+        log_rollback(checkpoint_id, False, notes)
+        return result
 
 
 def list_checkpoints() -> dict:

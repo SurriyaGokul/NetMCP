@@ -5,6 +5,7 @@ Makes intelligent decisions about whether changes improved or worsened performan
 
 from typing import Dict, List, Optional
 import json
+from .audit_log import log_validation_test
 
 
 class ValidationEngine:
@@ -444,5 +445,14 @@ class ValidationEngine:
         result["profile"] = profile
         result["before_timestamp"] = before.get("timestamp", "unknown")
         result["after_timestamp"] = after.get("timestamp", "unknown")
+        
+        # Log the validation test
+        log_validation_test(
+            profile,
+            before,
+            after,
+            result["decision"],
+            result["score"]
+        )
         
         return result

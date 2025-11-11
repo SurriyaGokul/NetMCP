@@ -10,6 +10,7 @@ def render_change_plan(plan: dict) -> dict:
         dict: A RenderedPlan dictionary containing the rendered commands/scripts.
     """
     from ..schema.models import ParameterPlan, RenderedPlan
+    from .audit_log import log_plan_rendering
     
     # Validate and parse the input plan
     try:
@@ -58,7 +59,12 @@ def render_change_plan(plan: dict) -> dict:
             rendered.sysctl_cmds = []
         rendered.sysctl_cmds.extend(tracking_sysctls)
     
-    return rendered.model_dump()
+    rendered_dict = rendered.model_dump()
+    
+    # Log the rendering operation
+    log_plan_rendering(plan, rendered_dict)
+    
+    return rendered_dict
 
 
 def _render_sysctl(sysctl_set) -> list:

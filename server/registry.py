@@ -461,3 +461,72 @@ def register_tools(mcp):
         """
         return _apply_nft.apply_nft_ruleset(ruleset)
     
+    # ============================================================================
+    # AUDIT LOG TOOLS
+    # ============================================================================
+    
+    @mcp.tool()
+    def get_audit_log_tool(limit: int = 50) -> dict:
+        """
+        Get recent audit log entries showing all system changes.
+        
+        Returns a history of all configuration changes, commands executed,
+        validations performed, and rollback operations with timestamps and context.
+        
+        Args:
+            limit: Maximum number of recent entries to return (default: 50)
+            
+        Returns:
+            dict with entries list containing audit log records
+        """
+        from .tools.audit_log import get_audit_logger
+        
+        logger = get_audit_logger()
+        entries = logger.get_recent_entries(limit)
+        
+        return {
+            "ok": True,
+            "count": len(entries),
+            "entries": entries
+        }
+    
+    @mcp.tool()
+    def search_audit_log_tool(
+        action: str = None,
+        checkpoint_id: str = None,
+        start_date: str = None,
+        end_date: str = None
+    ) -> dict:
+        """
+        Search audit log entries by criteria.
+        
+        Filter audit log by action type, checkpoint ID, or date range.
+        All filters are optional and can be combined.
+        
+        Args:
+            action: Filter by action type (e.g., 'apply_plan', 'validate_plan', 
+                   'create_checkpoint', 'rollback', 'execute_command', 'validation_test')
+            checkpoint_id: Filter by specific checkpoint ID
+            start_date: Filter entries after this ISO timestamp
+            end_date: Filter entries before this ISO timestamp
+            
+        Returns:
+            dict with matching entries list
+        """
+        from .tools.audit_log import get_audit_logger
+        
+        logger = get_audit_logger()
+        entries = logger.search_entries(action, checkpoint_id, start_date, end_date)
+        
+        return {
+            "ok": True,
+            "count": len(entries),
+            "filters": {
+                "action": action,
+                "checkpoint_id": checkpoint_id,
+                "start_date": start_date,
+                "end_date": end_date
+            },
+            "entries": entries
+        }
+    
