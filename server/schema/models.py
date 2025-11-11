@@ -101,7 +101,7 @@ class ParameterPlan(BaseModel):
     profile: NonEmptyStr
     changes: Changes
     validation: Optional[ValidateSpec] = None
-    rationale: Optional[List[Min3Str]] = None
+    rationale: Optional[NonEmptyStr] = None
 
 class RenderedPlan(BaseModel):
     sysctl_cmds: List[str] = Field(default_factory=list)      # ["sysctl -w net.ipv4.tcp_congestion_control=bbr", ...]

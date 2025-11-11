@@ -66,7 +66,7 @@ def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None
                         errors.append(f"sysctl failed: {cmd} - {r.get('stderr','')}\n{r.get('stdout','')}")
                         raise RuntimeError("sysctl command failed")
                     applied_steps.append(("sysctl", cmd))
-                    notes.append(f"✓ {cmd}")
+                    notes.append(f"{cmd}")
                 else:
                     errors.append(f"Invalid sysctl command format: {cmd}")
                     raise ValueError(f"Invalid sysctl command format: {cmd}")
