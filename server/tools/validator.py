@@ -27,7 +27,7 @@ def load_validation_limits() -> Dict[str, Any]:
             'bandwidth': {'max_mbps': 100000, 'min_mbps': 1},
             'dscp': {'valid_values': ["EF", "CS6", "CS5", "CS4", "AF41", "AF42", "AF43"]},
             'plan_structure': {
-                'valid_top_keys': ["iface", "profile", "changes", "validate", "rationale"],
+                'valid_top_keys': ["iface", "profile", "changes", "validation", "rationale"],
                 'valid_change_keys': ["qdisc", "shaper", "sysctl", "offloads", "dscp", "mtu"],
                 'valid_qdisc_keys': ["type", "params"],
                 'valid_offload_keys': ["gro", "gso", "tso", "lro"]
@@ -61,7 +61,7 @@ def validate_change_plan(parameter_plan: dict) -> dict:
     # Get valid keys from limits
     structure = limits.get('plan_structure', {})
     valid_top_keys = set(structure.get('valid_top_keys', 
-        ["iface", "profile", "changes", "validate", "rationale"]))
+        ["iface", "profile", "changes", "validation", "rationale"]))
     
     unknown_keys = set(parameter_plan.keys()) - valid_top_keys
     if unknown_keys:

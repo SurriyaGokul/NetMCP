@@ -306,7 +306,7 @@ class TestValidator(unittest.TestCase):
                     }
                 ]
             },
-            "validate": {
+            "validation": {
                 "targets": {"ping": "8.8.8.8"},
                 "objectives": {"latency_p95_ms": 20}
             },

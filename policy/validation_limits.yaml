@@ -151,7 +151,7 @@ validation_limits:
       - "iface"      # Network interface name
       - "profile"    # Optimization profile name
       - "changes"    # Changes to apply
-      - "validate"   # Validation targets and objectives
+      - "validation" # Validation targets and objectives
       - "rationale"  # Explanation of changes
     
     valid_change_keys:

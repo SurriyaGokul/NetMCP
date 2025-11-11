@@ -100,7 +100,7 @@ class ParameterPlan(BaseModel):
     iface: NonEmptyStr
     profile: NonEmptyStr
     changes: Changes
-    validate: Optional[ValidateSpec] = None
+    validation: Optional[ValidateSpec] = None
     rationale: Optional[List[Min3Str]] = None
 
 class RenderedPlan(BaseModel):

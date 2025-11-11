@@ -13,8 +13,6 @@ from .tools.apply import (
     sysctl as _apply_sysctl,
     tc as _apply_tc,
     nft as _apply_nft,
-    offloads as _apply_off,
-    mtu as _apply_mtu,
     iptables as _apply_iptables
 )
 
