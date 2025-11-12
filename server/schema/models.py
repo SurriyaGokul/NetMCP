@@ -97,11 +97,14 @@ class Changes(BaseModel):
     nat_rules: Optional[List[NATRule]] = None
 
 class ParameterPlan(BaseModel):
-    iface: NonEmptyStr
-    profile: NonEmptyStr
-    changes: Changes
-    validation: Optional[ValidateSpec] = None
-    rationale: Optional[NonEmptyStr] = None
+    iface: NonEmptyStr = Field(..., alias='interface', description="Network interface name (e.g., 'eth0', 'wlan0')")
+    profile: NonEmptyStr = Field(..., description="Profile name from available profiles")
+    changes: Changes = Field(..., description="Network configuration changes to apply")
+    validation: Optional[ValidateSpec] = Field(None, description="Optional validation targets and objectives")
+    rationale: Optional[NonEmptyStr] = Field(None, description="Optional explanation for the changes")
+    
+    class Config:
+        populate_by_name = True  # Allow both 'iface' and 'interface'
 
 class RenderedPlan(BaseModel):
     sysctl_cmds: List[str] = Field(default_factory=list)      # ["sysctl -w net.ipv4.tcp_congestion_control=bbr", ...]
