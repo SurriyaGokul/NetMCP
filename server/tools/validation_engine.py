@@ -15,9 +15,6 @@ OPTIMIZATION_PROFILES = {
     "video_calls": "video_calls",
     "bulk_transfer": "bulk_transfer",
     "server": "server",
-    "balanced": "balanced",  # Special: combination of gaming + streaming
-    "low-latency": "low-latency",  # Special: ultra-strict latency requirements
-    "low_latency": "low-latency",  # Alias for convenience
     
     # Legacy aliases for backward compatibility
     "throughput": "streaming",  # Legacy: throughput → streaming
@@ -841,14 +838,12 @@ class ValidationEngine:
         Main entry point for validation.
         Compares before/after benchmarks based on specified profile.
         
-        Supports all profiles from profiles.yaml:
+        Supports profiles from profiles.yaml:
         - gaming: Ultra-low latency for competitive gaming
         - streaming: High throughput for video streaming
         - video_calls: Balanced for video conferencing (ITU-T G.114)
         - bulk_transfer: Maximum throughput for file transfers
         - server: High-concurrency server workloads
-        - balanced: General purpose (combines gaming + streaming)
-        - low-latency: Ultra-strict latency requirements (HFT, real-time)
         
         Args:
             before: Benchmark results before changes
@@ -868,14 +863,12 @@ class ValidationEngine:
             "video_calls": ValidationEngine.validate_video_calls_profile,
             "bulk_transfer": ValidationEngine.validate_bulk_transfer_profile,
             "server": ValidationEngine.validate_server_profile,
-            "balanced": ValidationEngine.validate_balanced_profile,
-            "low-latency": ValidationEngine.validate_low_latency_profile,
             
             # Legacy: throughput is now streaming
             "throughput": ValidationEngine.validate_throughput_profile,
         }
         
-        validator = validators.get(normalized_profile, ValidationEngine.validate_balanced_profile)
+        validator = validators.get(normalized_profile, ValidationEngine.validate_gaming_profile)
         result = validator(before, after)
         
         result["profile"] = profile
