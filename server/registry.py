@@ -253,7 +253,7 @@ def register_tools(mcp):
             detailed metrics comparison
         """
         from .tools.validation_engine import ValidationEngine
-        return ValidationEngine.compare_benchmarks(before_results, after_results, profile)
+        return ValidationEngine.compare_benchmark(before_results, after_results, profile)
     
     @mcp.tool()
     def auto_validate_and_rollback_tool(
