@@ -233,7 +233,7 @@ def register_tools(mcp):
             detailed reasons, and metrics comparison
         """
         from .tools.validation_engine import ValidationEngine
-        return ValidationEngine.compare_benchmarks(before_results, after_results, profile)
+        return ValidationEngine.compare_benchmark(before_results, after_results, profile)
     
     @mcp.tool()
     def auto_validate_and_rollback_tool(
@@ -285,7 +285,114 @@ def register_tools(mcp):
         
         result["action_taken"] = action_taken
         return result
-    
+
+
+
+    # ==============================================================================
+    # Add this new function within the `register_tools(mcp)` function in registry.py
+    # ==============================================================================
+
+    @mcp.tool()
+    def run_benchmarked_optimization_tool(profile_name: str, notes: str = None) -> dict:
+        """
+        Runs the full before-and-after performance test and optimization cycle.
+        1. Tests initial performance (Baseline).
+        2. Renders and applies the optimization plan (with automatic checkpoint/rollback).
+        3. Tests final performance (Optimized).
+        4. Compares and validates the results.
+        
+        Args:
+            profile_name: The name of the optimization profile to test and apply (e.g., 'gaming', 'throughput').
+            notes: Optional notes for the audit log and checkpoint.
+            
+        Returns:
+            A composite report dictionary containing all results and a final decision.
+        """
+
+        # ==============================================================================
+        # Add these imports to the top of registry.py if they are not already present
+        # ==============================================================================
+        import tempfile
+        import json
+        from .tools.planner import render_change_plan # Assuming planner tool's internal function
+        from .tools.apply.apply import apply_rendered_plan # Defined in uploaded:apply.py
+        # Assuming internal functions for benchmark and validation
+        from .tools.validation_metrics import run_full_benchmark
+        from .tools.validation_engine import ValidationEngine
+
+        
+        composite_report = {
+            "profile": profile_name,
+            "notes": notes,
+            "status": "IN_PROGRESS",
+            "steps": {}
+        }
+        
+        # Use a temp directory for the benchmark files to keep the system clean
+        with tempfile.TemporaryDirectory() as temp_dir:
+            before_file = f"{temp_dir}/before_benchmark.json"
+            after_file = f"{temp_dir}/after_benchmark.json"
+            
+            # 1. Test Initial Performance (Baseline)
+            try:
+                # The internal function is called, saving results to before_file
+                before_results = run_full_benchmark(profile_name)
+                composite_report["steps"]["baseline_test"] = before_results
+                composite_report["steps"]["baseline_test"]["status"] = "SUCCESS"
+            except Exception as e:
+                composite_report["status"] = "FAILURE"
+                composite_report["steps"]["baseline_test"] = {"status": "ERROR", "error": str(e)}
+                return composite_report
+            
+            # 2. Render and Apply Optimization Plan (Atomic operation with rollback in apply.py)
+            try:
+                # Render the plan
+                plan = render_change_plan(profile_name)
+                
+                # Apply the plan (this step creates a checkpoint and auto-rolls back on failure)
+                change_report = apply_rendered_plan(plan, checkpoint_label=f"Benchmarked Op: {profile_name}")
+                composite_report["steps"]["optimization_apply"] = change_report
+                
+                if not change_report.get("applied"):
+                    composite_report["status"] = "FAILURE"
+                    composite_report["steps"]["optimization_apply"]["status"] = "FAILED_TO_APPLY"
+                    return composite_report
+                
+                composite_report["steps"]["optimization_apply"]["status"] = "SUCCESS"
+            except Exception as e:
+                composite_report["status"] = "FAILURE"
+                composite_report["steps"]["optimization_apply"] = {"status": "CRITICAL_APPLY_ERROR", "error": str(e)}
+                return composite_report
+            
+            # 3. Test Final Performance (Optimized)
+            try:
+                # The internal function is called again, saving results to after_file
+                after_results = run_full_benchmark(profile_name)
+                composite_report["steps"]["optimized_test"] = after_results
+                composite_report["steps"]["optimized_test"]["status"] = "SUCCESS"
+            except Exception as e:
+                composite_report["status"] = "FAILURE"
+                composite_report["steps"]["optimized_test"] = {"status": "ERROR", "error": str(e)}
+                return composite_report
+            
+            # 4. Compare and Validate Results
+            try:
+                validation_report = ValidationEngine.compare_benchmark(
+                    before_file=before_file, 
+                    after_file=after_file, 
+                    profile_name=profile_name
+                )
+                composite_report["steps"]["validation"] = validation_report
+                composite_report["steps"]["validation"]["status"] = "COMPLETED"
+                
+                # Use the validation decision as the final status
+                composite_report["status"] = validation_report.get("decision", "UNCERTAIN")
+            except Exception as e:
+                composite_report["status"] = "UNCERTAIN_VALIDATION"
+                composite_report["steps"]["validation"] = {"status": "ERROR", "error": str(e)}
+                
+            return composite_report
+
     # ============================================================================
     # DISCOVERY TOOLS
     # ============================================================================
