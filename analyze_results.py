@@ -221,6 +221,73 @@ def create_streaming_plot():
     plt.savefig('results/streaming_profile_comparison.png', dpi=300, bbox_inches='tight')
     print("✓ Streaming profile plot saved")
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Set style for professional plots
+plt.style.use('seaborn-v0_8-darkgrid')
+colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
+
+def create_gaming_plot():
+    """Gaming Profile: Ultra-low latency optimization"""
+    metrics = ['Avg Latency\n(ms)', 'Jitter\n(ms)', 'Max Latency\n(ms)', 
+               'Connection\nTime (ms)', 'DNS Query\n(ms)', 'Multi-Host\nAvg (ms)']
+    before = [18.90, 46.20, 61.1, 29.32, 18.40, 12.05]
+    after = [19.97, 32.40, 47.3, 24.30, 24.00, 10.72]
+    
+    # Calculate percentage changes
+    pct_changes = [((after[i] - before[i]) / before[i]) * 100 for i in range(len(before))]
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # Left plot: Absolute values
+    x = np.arange(len(metrics))
+    width = 0.35
+    
+    bars1 = ax1.bar(x - width/2, before, width, label='Before (Balanced)', 
+                    color=colors[0], alpha=0.8, edgecolor='black', linewidth=1.2)
+    bars2 = ax1.bar(x + width/2, after, width, label='After (Gaming)', 
+                    color=colors[1], alpha=0.8, edgecolor='black', linewidth=1.2)
+    
+    ax1.set_ylabel('Value', fontsize=12, fontweight='bold')
+    ax1.set_title('Gaming Profile: Before vs After', fontsize=14, fontweight='bold', pad=20)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(metrics, fontsize=10)
+    ax1.legend(fontsize=10, framealpha=0.9)
+    ax1.grid(axis='y', alpha=0.3)
+    
+    # Add value labels on bars
+    for bars in [bars1, bars2]:
+        for bar in bars:
+            height = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{height:.1f}',
+                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    # Right plot: Percentage changes
+    colors_pct = [colors[3] if x > 0 else colors[4] for x in pct_changes]
+    bars3 = ax2.barh(metrics, pct_changes, color=colors_pct, alpha=0.8, 
+                     edgecolor='black', linewidth=1.2)
+    
+    ax2.set_xlabel('Percentage Change (%)', fontsize=12, fontweight='bold')
+    ax2.set_title('Gaming Profile: Performance Changes', fontsize=14, fontweight='bold', pad=20)
+    ax2.axvline(x=0, color='black', linestyle='-', linewidth=1.5)
+    ax2.grid(axis='x', alpha=0.3)
+    
+    # Add percentage labels
+    for i, (bar, pct) in enumerate(zip(bars3, pct_changes)):
+        width = bar.get_width()
+        label_x = width + (2 if width > 0 else -2)
+        ax2.text(label_x, bar.get_y() + bar.get_height()/2.,
+                f'{pct:+.1f}%',
+                ha='left' if width > 0 else 'right',
+                va='center', fontsize=10, fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig('results/gaming_profile_comparison.png', dpi=300, bbox_inches='tight')
+    print("✓ Gaming profile plot saved: results/gaming_profile_comparison.png")
+    plt.close()
+
 def create_video_calls_plot():
     """Create double plot for Video Calls profile"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
@@ -351,11 +418,12 @@ def create_server_plot():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("GENERATING COMPARISON PLOTS FOR FOUR TESTED PROFILES")
+    print("GENERATING COMPARISON PLOTS FOR ALL FIVE PROFILES")
     print("Based on ACTUAL test results from network performance benchmarks")
     print("Baseline: Balanced profile (default system state)")
     print("=" * 70)
     print()
+    create_gaming_plot()
     create_video_calls_plot()
     create_bulk_transfer_plot()
     create_streaming_plot()
@@ -365,8 +433,9 @@ if __name__ == "__main__":
     print("All plots generated successfully!")
     print("=" * 70)
     print("\nFiles saved in results/ directory:")
-    print("  1. video_calls_profile_comparison.png")
-    print("  2. bulk_transfer_profile_comparison.png")
-    print("  3. streaming_profile_comparison.png")
-    print("  4. server_profile_comparison.png")
+    print("  1. gaming_profile_comparison.png")
+    print("  2. video_calls_profile_comparison.png")
+    print("  3. bulk_transfer_profile_comparison.png")
+    print("  4. streaming_profile_comparison.png")
+    print("  5. server_profile_comparison.png")
     print()
