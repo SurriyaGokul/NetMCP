@@ -250,29 +250,6 @@ class TestPlanner(unittest.TestCase):
         self.assertIn("tc qdisc", scripts[0])
         self.assertIn("eth0", scripts[0])
     
-    def test_mtu_rendering_stability(self):
-        """Test that MTU commands are rendered consistently"""
-        plan = {
-            "iface": "eth0",
-            "profile": "gaming",
-            "changes": {
-                "mtu": 1500
-            }
-        }
-        
-        # Run multiple times
-        commands = []
-        for _ in range(5):
-            result = render_change_plan(plan)
-            commands.append(result["ip_link_cmds"])
-        
-        # All should be identical
-        for i in range(1, len(commands)):
-            self.assertEqual(commands[0], commands[i])
-        
-        # Check format
-        self.assertEqual(commands[0], ["ip link set dev eth0 mtu 1500"])
-    
     # Tests for different interface names
     def test_interface_name_consistency(self):
         """Test that different interface names don't affect determinism"""

@@ -29,9 +29,9 @@ def load_validation_limits() -> Dict[str, Any]:
             'dscp': {'valid_values': ["EF", "CS6", "CS5", "CS4", "AF41", "AF42", "AF43"]},
             'plan_structure': {
                 'valid_top_keys': ["iface", "profile", "changes", "validation", "rationale"],
-                'valid_change_keys': ["qdisc", "shaper", "sysctl", "offloads", "dscp", "mtu"],
-                'valid_qdisc_keys': ["type", "params"],
-                'valid_offload_keys': ["gro", "gso", "tso", "lro"]
+                'valid_change_keys': ["qdisc", "shaper", "netem", "htb_classes", "sysctl", "dscp", 
+                                      "connection_limits", "rate_limits", "connection_tracking", "nat_rules"],
+                'valid_qdisc_keys': ["type", "params"]
             }
         }
         return _validation_limits_cache
@@ -73,6 +73,13 @@ def validate_change_plan(parameter_plan: dict) -> dict:
     except Exception as e:
         errors.append(f"Schema validation failed: {str(e)}")
         return {"ok": False, "errors": errors, "plan": None}
+    
+    # Validate profile name against profiles.yaml
+    VALID_PROFILES = ["gaming", "streaming", "video_calls", "bulk_transfer", "server"]
+    if validated_plan.profile not in VALID_PROFILES:
+        errors.append(
+            f"Invalid profile '{validated_plan.profile}'. Must be one of: {', '.join(VALID_PROFILES)}"
+        )
     
     # Additional validation: DSCP values
     if validated_plan.changes.dscp:
@@ -130,7 +137,8 @@ def validate_change_plan(parameter_plan: dict) -> dict:
     # Check for unknown keys in changes
     if "changes" in parameter_plan:
         valid_change_keys = set(structure.get('valid_change_keys',
-            ["qdisc", "shaper", "sysctl", "offloads", "dscp", "mtu"]))
+            ["qdisc", "shaper", "netem", "htb_classes", "sysctl", "dscp", 
+             "connection_limits", "rate_limits", "connection_tracking", "nat_rules"]))
         unknown_change_keys = set(parameter_plan["changes"].keys()) - valid_change_keys
         if unknown_change_keys:
             errors.append(f"Unknown keys in changes: {', '.join(sorted(unknown_change_keys))}")
@@ -141,13 +149,6 @@ def validate_change_plan(parameter_plan: dict) -> dict:
         unknown_qdisc_keys = set(parameter_plan["changes"]["qdisc"].keys()) - valid_qdisc_keys
         if unknown_qdisc_keys:
             errors.append(f"Unknown keys in qdisc: {', '.join(sorted(unknown_qdisc_keys))}")
-    
-    if validated_plan.changes.offloads and "offloads" in parameter_plan.get("changes", {}):
-        valid_offload_keys = set(structure.get('valid_offload_keys', 
-            ["gro", "gso", "tso", "lro"]))
-        unknown_offload_keys = set(parameter_plan["changes"]["offloads"].keys()) - valid_offload_keys
-        if unknown_offload_keys:
-            errors.append(f"Unknown keys in offloads: {', '.join(sorted(unknown_offload_keys))}")
     
     if errors:
         result = {"ok": False, "errors": errors, "plan": None}

@@ -369,11 +369,12 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
     Run a comprehensive set of network performance tests.
     
     Args:
-        profile: Test profile (gaming, throughput, balanced)
+        profile: Test profile - must be one of: gaming, streaming, video_calls, bulk_transfer, server, balanced
     
     Returns:
         {
-            "profile": str,
+            "test_suite": str,  # Which test suite was run
+            "recommended_profile": str,  # Recommended optimization profile based on results
             "timestamp": str,
             "latency": {...},
             "connection_time": {...},
@@ -384,8 +385,20 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
     """
     import datetime
     
+    # Valid profile names from profiles.yaml
+    VALID_PROFILES = ["gaming", "streaming", "video_calls", "bulk_transfer", "server", "balanced"]
+    
+    # Normalize profile name (for backward compatibility)
+    if profile == "throughput":
+        # Map old "throughput" test profile to "streaming" optimization profile
+        profile = "streaming"
+    
+    # Validate profile
+    if profile not in VALID_PROFILES:
+        raise ValueError(f"Invalid profile '{profile}'. Must be one of: {', '.join(VALID_PROFILES)}")
+    
     results = {
-        "profile": profile,
+        "test_suite": profile,
         "timestamp": datetime.datetime.now().isoformat(),
         "tests": {}
     }
@@ -403,15 +416,15 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
         )
         results["tests"]["multi_latency"] = multi_latency
         
-    elif profile == "throughput":
-        # Throughput: Focus on bandwidth, include iperf3
+    elif profile in ["streaming", "bulk_transfer"]:
+        # Streaming/Bulk: Focus on bandwidth, include iperf3
         latency_result = measure_latency(host="8.8.8.8", count=10)
         results["tests"]["latency"] = latency_result
         
         throughput_result = measure_tcp_throughput(duration=10)
         results["tests"]["throughput"] = throughput_result
         
-    else:  # balanced
+    else:  # video_calls, server, balanced
         # Balanced: All tests with moderate samples
         latency_result = measure_latency(host="8.8.8.8", count=20)
         results["tests"]["latency"] = latency_result
@@ -433,13 +446,51 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
         conn = results["tests"]["connection_time"]
         summary_parts.append(f"Connection: {conn['avg_connect_ms']:.2f}ms")
     
-    if results["tests"].get("throughput", {}).get("available"):
+    if results["tests"].get("throughput", {}).get("available") and "throughput_mbps" in results["tests"].get("throughput", {}):
         tp = results["tests"]["throughput"]
         summary_parts.append(f"Throughput: {tp['throughput_mbps']:.2f} Mbps")
     
     results["summary"] = " | ".join(summary_parts) if summary_parts else "No tests available"
     
+    # Add intelligent profile recommendation based on actual metrics
+    results["recommended_profile"] = _recommend_profile_from_metrics(results["tests"])
+    
     return results
+
+
+def _recommend_profile_from_metrics(tests: Dict) -> str:
+    """
+    Analyze test results and recommend the most appropriate optimization profile.
+    
+    Logic:
+    - Gaming: Low latency (<30ms) and low jitter (<10ms)
+    - Streaming: High throughput (>50 Mbps) or medium latency (30-100ms)
+    - Bulk Transfer: Very high throughput (>500 Mbps)
+    - Balanced: Everything else
+    """
+    latency_test = tests.get("latency", {})
+    throughput_test = tests.get("throughput", {})
+    
+    # Extract key metrics safely
+    avg_latency = latency_test.get("avg_ms", 999)
+    jitter = latency_test.get("jitter_ms", 999)
+    
+    # Only get throughput if available and successfully measured
+    throughput_mbps = None
+    if throughput_test.get("available") and "throughput_mbps" in throughput_test:
+        throughput_mbps = throughput_test.get("throughput_mbps", 0)
+    
+    # Decision tree for profile recommendation
+    if avg_latency < 30 and jitter < 10:
+        return "gaming"  # Ultra-low latency with stable jitter
+    elif throughput_mbps is not None and throughput_mbps > 500:
+        return "bulk_transfer"  # Very high bandwidth
+    elif throughput_mbps is not None and throughput_mbps > 50:
+        return "streaming"  # Good bandwidth for video
+    elif avg_latency < 100:
+        return "balanced"  # Decent latency, general purpose
+    else:
+        return "balanced"  # Default fallback
 
 
 def quick_latency_test() -> Dict:

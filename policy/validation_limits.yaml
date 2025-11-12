@@ -1,6 +1,6 @@
 # Validation Limits for Network Parameter Plans
 # Defines constraints for validator to check against
-# Configurable limits for bandwidth, DSCP, MTU, and other validation checks
+# Configurable limits for bandwidth, DSCP, and other validation checks
 
 validation_limits:
   # Bandwidth/Shaper Limits (in Mbps)
@@ -61,31 +61,6 @@ validation_limits:
       - "Default (best effort) traffic uses DSCP 0 (not configured explicitly)"
       - "DSCP remarking may occur at network boundaries"
 
-  # MTU (Maximum Transmission Unit) Limits
-  # Source: RFC 791 (IPv4), RFC 8200 (IPv6), IEEE 802.3 (Ethernet)
-  mtu:
-    # Standard MTU ranges
-    min_bytes: 576     # IPv4 minimum safe MTU (RFC 791)
-    max_bytes: 9000    # Jumbo frames maximum
-    standard: 1500     # Default Ethernet MTU
-    jumbo: 9000        # Jumbo frames for datacenter/storage
-    
-    rules:
-      - "MTU must be >= 576 (IPv4 minimum safe value)"
-      - "MTU must be <= 9000 (jumbo frame maximum)"
-      - "Path MTU discovery should be enabled for non-standard MTUs"
-    
-    recommendations:
-      internet_facing: 1500    # Standard for internet connectivity
-      datacenter_internal: 9000  # Jumbo frames for internal traffic
-      vpn_tunnel: 1400         # Account for VPN overhead
-      pppoe: 1492              # PPPoE reduces MTU by 8 bytes
-    
-    notes:
-      - "Jumbo frames (>1500) require end-to-end support"
-      - "Fragmentation overhead increases with MTU mismatch"
-      - "Cloud providers may have specific MTU requirements"
-
   # Qdisc (Queueing Discipline) Valid Types
   # Source: Linux kernel tc documentation
   qdisc:
@@ -103,30 +78,6 @@ validation_limits:
       - "Qdisc type must match kernel support"
       - "BBR congestion control requires fq or fq_codel"
       - "HTB requires manual class configuration"
-
-  # Offloads Valid Keys
-  # Source: ethtool documentation, Linux kernel networking
-  offloads:
-    valid_keys:
-      - "gro"  # Generic Receive Offload
-      - "gso"  # Generic Send Offload
-      - "tso"  # TCP Segmentation Offload
-      - "lro"  # Large Receive Offload (deprecated, rarely used)
-    
-    descriptions:
-      gro: "Coalesces received packets to reduce CPU overhead"
-      gso: "Defers packet segmentation to NIC hardware"
-      tso: "Offloads TCP segmentation to NIC (subset of GSO)"
-      lro: "Legacy receive offload (deprecated, use GRO instead)"
-    
-    rules:
-      - "Disable offloads on VMs/containers with virtio"
-      - "Disable on overlay networks (VXLAN, Geneve)"
-      - "Enable on physical NICs for high throughput"
-    
-    notes:
-      - "Not all NICs support all offloads"
-      - "Check with 'ethtool -k <interface>' before applying"
 
   # Sysctl Parameter Validation
   # Prevent common misconfigurations
@@ -157,10 +108,14 @@ validation_limits:
     valid_change_keys:
       - "qdisc"     # Queueing discipline
       - "shaper"    # Bandwidth shaping
+      - "netem"     # Network emulation
+      - "htb_classes"  # HTB class configuration
       - "sysctl"    # Kernel parameters
-      - "offloads"  # NIC offload settings
       - "dscp"      # QoS DSCP marking
-      - "mtu"       # Maximum transmission unit
+      - "connection_limits"  # Connection limiting
+      - "rate_limits"        # Rate limiting
+      - "connection_tracking"  # Connection tracking settings
+      - "nat_rules"  # NAT rules
     
     valid_qdisc_keys:
       - "type"      # Qdisc type (cake, fq_codel, htb)

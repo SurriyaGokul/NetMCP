@@ -3,7 +3,7 @@ from .tools.planner import render_change_plan
 from .tools.validator import validate_change_plan
 from .tools.apply.apply import apply_rendered_plan
 from .tools.apply.checkpoints import (
-    snapshot_checkpoint, 
+    snapshot_checkpoint,
     rollback_to_checkpoint,
     list_checkpoints,
     delete_checkpoint
@@ -16,8 +16,13 @@ from .tools.apply import (
     iptables as _apply_iptables
 )
 
+
 def register_resources(mcp, policy_registry):
-    """Register MCP resources for policy configuration cards."""
+    """
+    Register MCP resources for accessing policy configuration cards.
+    
+    Resources provide read-only access to configuration metadata and documentation.
+    """
     
     @mcp.resource("policy://config_cards/list")
     def get_policy_card_list() -> str:
@@ -42,54 +47,50 @@ def register_tools(mcp):
     """
     Register all MCP tools with the FastMCP server.
     
-    Tools are organized into categories:
-    - Planning & Validation: render, validate, test, compare
-    - Execution & Safety: apply, checkpoint, rollback
-    - Discovery: 24+ network introspection tools
-    - Direct Apply: sysctl, tc, nft, offloads, mtu
-    """    
+    This function creates the complete tool API surface for network optimization,
+    organized into six functional categories for clear navigation and usage.
+    """
+    
+    # ========================================================================
+    # CORE WORKFLOW TOOLS
+    # ========================================================================
+    
     @mcp.tool()
     def render_change_plan_tool(plan: dict) -> dict:
         """
-        Render a ParameterPlan into concrete commands and scripts.
+        Render a ParameterPlan into executable commands and scripts.
         
-        Translates high-level optimization goals into executable system commands:
-        - Sysctl: List of 'sysctl -w key=value' commands
-        - TC: Bash script with traffic control commands
-        - Nftables: Complete nftables ruleset script
-        - Ethtool: NIC offload configuration commands
-        - IP: MTU and interface configuration commands
-        
-        This tool has NO side effects - it only generates commands without executing them.
-        Use apply_rendered_plan_tool() to actually apply the changes.
+        Translates high-level optimization goals into concrete system commands
+        without executing them. This is a pure transformation with no side effects.
         
         Args:
-            plan: ParameterPlan dictionary with iface, profile, changes, rationale
+            plan: ParameterPlan with interface, profile, changes, and rationale
             
         Returns:
-            RenderedPlan with sysctl_cmds, tc_script, nft_script, ethtool_cmds, ip_link_cmds
+            RenderedPlan containing:
+            - sysctl_cmds: List of kernel parameter commands
+            - tc_script: Traffic control configuration script
+            - nft_script: Complete nftables ruleset
         """
         return render_change_plan(plan)
     
     @mcp.tool()
     def validate_change_plan_tool(parameter_plan: dict) -> dict:
         """
-        Validate a ParameterPlan against schemas and policies.
+        Validate a ParameterPlan against schemas and policy constraints.
         
-        Performs multi-layer validation:
-        1. Pydantic schema validation (types, required fields)
-        2. Policy enforcement (limits from policy/limits.yaml)
-        3. Interface validation (verify interface exists)
-        4. Config card validation (parameters match specifications)
+        Performs comprehensive multi-layer validation including schema validation,
+        policy limit enforcement, interface existence checks, and configuration
+        card parameter verification.
         
         Args:
-            parameter_plan: ParameterPlan dictionary to validate
+            parameter_plan: ParameterPlan to validate
             
         Returns:
-            ValidationResult with:
-            - ok: bool (True if all validation passed)
-            - issues: list of error messages (empty if ok=True)
-            - normalized_plan: cleaned/normalized ParameterPlan
+            ValidationResult containing:
+            - ok: True if validation passed
+            - issues: List of error messages (empty if ok=True)
+            - normalized_plan: Cleaned and validated plan
         """
         return validate_change_plan(parameter_plan)
     
@@ -98,48 +99,47 @@ def register_tools(mcp):
         """
         Apply a RenderedPlan atomically with automatic rollback on failure.
         
-        Execution flow:
-        1. Create checkpoint (snapshot current state)
-        2. Execute sysctl commands sequentially
-        3. Execute tc script (traffic control)
-        4. Execute nftables script (firewall/QoS)
-        5. Execute ethtool commands (NIC offloads)
-        6. Execute ip link commands (MTU)
-        7. On any error: automatic rollback to checkpoint
+        Safely executes network configuration changes with comprehensive safety
+        features including command allowlisting, automatic checkpointing, and
+        rollback on any error.
         
-        Safety features:
-        - Command allowlisting (only approved binaries)
-        - No shell injection (commands as argv arrays)
-        - Atomic operations (all-or-nothing)
-        - Automatic rollback on failure
-        - Detailed execution logging
+        Execution sequence:
+        1. Create checkpoint snapshot
+        2. Execute sysctl commands
+        3. Execute traffic control script
+        4. Execute nftables script
+        5. Rollback automatically if any step fails
         
         Args:
             rendered_plan: RenderedPlan from render_change_plan_tool()
-            checkpoint_label: Optional label for the checkpoint
+            checkpoint_label: Optional descriptive label for checkpoint
             
         Returns:
-            ChangeReport with:
-            - applied: bool (True if all commands succeeded)
-            - errors: list of error messages
-            - checkpoint_id: ID for manual rollback if needed
-            - notes: execution log with ✓/✗ for each command
+            ChangeReport containing:
+            - applied: True if all commands succeeded
+            - errors: List of error messages
+            - checkpoint_id: ID for manual rollback
+            - notes: Detailed execution log
         """
         return apply_rendered_plan(rendered_plan, checkpoint_label)
+    
+    # ========================================================================
+    # CHECKPOINT MANAGEMENT
+    # ========================================================================
     
     @mcp.tool()
     def snapshot_checkpoint_tool(label: str = None) -> dict:
         """
-        Create a checkpoint of current network state for rollback.
+        Create a checkpoint of current network configuration state.
         
-        Snapshots include: sysctl parameters, tc qdisc config, nftables rules,
-        NIC offloads, MTU settings. Used for manual checkpointing or testing.
+        Captures sysctl parameters, traffic control configuration, and
+        nftables rules for later restoration.
         
         Args:
-            label: Optional descriptive label for this checkpoint
+            label: Optional descriptive label
             
         Returns:
-            dict with checkpoint_id and creation timestamp
+            dict with checkpoint_id and timestamp
         """
         return snapshot_checkpoint(label)
     
@@ -148,11 +148,11 @@ def register_tools(mcp):
         """
         Restore network configuration from a checkpoint.
         
-        Reverts all network settings to the state captured in the specified
-        checkpoint. Use list_checkpoints_tool() to see available checkpoints.
+        Reverts all network settings to the captured state. Use
+        list_checkpoints_tool() to see available checkpoints.
         
         Args:
-            checkpoint_id: The checkpoint ID to restore
+            checkpoint_id: Checkpoint ID to restore
             
         Returns:
             dict with ok status, restored settings, and notes
@@ -161,37 +161,52 @@ def register_tools(mcp):
     
     @mcp.tool()
     def list_checkpoints_tool() -> dict:
-        """List all available checkpoints with metadata (ID, label, timestamp)."""
+        """
+        List all available checkpoints.
+        
+        Returns:
+            dict with checkpoint metadata (ID, label, timestamp)
+        """
         return list_checkpoints()
     
     @mcp.tool()
     def delete_checkpoint_tool(checkpoint_id: str) -> dict:
-        """Delete a specific checkpoint to free up storage."""
+        """
+        Delete a specific checkpoint to free storage.
+        
+        Args:
+            checkpoint_id: Checkpoint ID to delete
+            
+        Returns:
+            dict with ok status
+        """
         return delete_checkpoint(checkpoint_id)
     
-    # ============================================================================
+    # ========================================================================
     # PERFORMANCE TESTING & VALIDATION
-    # ============================================================================
+    # ========================================================================
     
     @mcp.tool()
     def test_network_performance_tool(profile: str = "gaming") -> dict:
         """
         Run comprehensive network performance benchmarks.
         
-        Test suites by profile:
-        - gaming: Focus on latency and jitter (20-30 pings, DNS timing, connection speed)
-        - throughput: Bandwidth tests with iperf3 if available
+        Executes profile-specific tests to measure latency, jitter, packet loss,
+        DNS resolution, and connection speeds. Use before and after configuration
+        changes to measure impact.
+        
+        Profiles:
+        - gaming: Latency and jitter focused (20-30 pings)
+        - throughput: Bandwidth tests with iperf3
         - balanced: Mixed tests with moderate samples
         - low-latency: Ultra-strict latency testing
         
-        Use cases:
-        - Establish baseline before making changes
-        - Validate improvements after optimization
-        - Troubleshoot network issues
-        
+        Args:
+            profile: Test profile to use
+            
         Returns:
-            dict with latency, jitter, packet loss, DNS resolution, connection time,
-            and optional throughput metrics
+            dict with latency, jitter, packet_loss, dns_resolution,
+            connection_time, and optional throughput metrics
         """
         from .tools.validation_metrics import run_full_benchmark
         return run_full_benchmark(profile)
@@ -199,8 +214,10 @@ def register_tools(mcp):
     @mcp.tool()
     def quick_latency_test_tool() -> dict:
         """
-        Quick 10-ping latency test for rapid before/after comparisons.
-        Useful during interactive optimization sessions.
+        Quick 10-ping latency test for rapid comparisons.
+        
+        Useful during interactive optimization sessions for fast before/after
+        measurements.
         
         Returns:
             dict with avg_ms, jitter_ms, packet_loss_percent
@@ -215,22 +232,25 @@ def register_tools(mcp):
         profile: str = "gaming"
     ) -> dict:
         """
-        Compare before/after performance and decide: KEEP, ROLLBACK, or UNCERTAIN.
+        Compare before/after performance and recommend action.
         
-        Decision logic by profile:
-        - gaming: Prioritizes latency (40%), jitter (30%), packet loss (20%), connection time (10%)
-        - throughput: Prioritizes bandwidth (50%), stability (20%), retransmits (20%), connection (10%)
+        Analyzes benchmark results and provides KEEP, ROLLBACK, or UNCERTAIN
+        decision based on profile-specific criteria and weighted metrics.
+        
+        Decision criteria by profile:
+        - gaming: Latency 40%, jitter 30%, packet loss 20%, connection 10%
+        - throughput: Bandwidth 50%, stability 20%, retransmits 20%, connection 10%
         - balanced: Equal weight to latency and throughput
         - low-latency: Ultra-strict on latency (any increase triggers ROLLBACK)
         
         Args:
-            before_results: Output from test_network_performance_tool() BEFORE changes
-            after_results: Output from test_network_performance_tool() AFTER changes
-            profile: Validation profile (gaming, throughput, balanced, low-latency)
+            before_results: Benchmark before changes
+            after_results: Benchmark after changes
+            profile: Validation profile
             
         Returns:
-            dict with decision (KEEP/ROLLBACK/UNCERTAIN), score (0-100), summary,
-            detailed reasons, and metrics comparison
+            dict with decision, score (0-100), summary, reasons, and
+            detailed metrics comparison
         """
         from .tools.validation_engine import ValidationEngine
         return ValidationEngine.compare_benchmarks(before_results, after_results, profile)
@@ -244,17 +264,18 @@ def register_tools(mcp):
         auto_rollback: bool = True
     ) -> dict:
         """
-        Validate changes and automatically rollback if performance degraded.
+        Automated validation with conditional rollback.
         
-        Combines validate_configuration_changes_tool() + rollback_to_checkpoint_tool()
-        for automated testing workflows.
+        Combines performance validation with automatic rollback for
+        streamlined testing workflows. If performance degrades, automatically
+        reverts to checkpoint.
         
         Args:
-            checkpoint_id: Checkpoint to rollback to if validation fails
+            checkpoint_id: Checkpoint to rollback to if needed
             before_results: Benchmark before changes
             after_results: Benchmark after changes
             profile: Validation profile
-            auto_rollback: If True, automatically rollback on ROLLBACK decision
+            auto_rollback: Enable automatic rollback on degradation
             
         Returns:
             dict with validation results, action_taken (KEPT/ROLLED_BACK/NO_ACTION),
@@ -286,198 +307,190 @@ def register_tools(mcp):
         result["action_taken"] = action_taken
         return result
     
-    # ============================================================================
-    # DISCOVERY TOOLS
-    # ============================================================================
+    # ========================================================================
+    # NETWORK DISCOVERY TOOLS
+    # ========================================================================
     
-    # Network Interface Discovery
     @mcp.tool()
     def ip_info() -> dict:
-        """Network interfaces and IP addresses (ip addr show)"""
+        """Get network interfaces and IP addresses."""
         return _disc.ip_info()
     
     @mcp.tool()
     def eth_info(iface: str = "eth0") -> dict:
-        """Interface hardware capabilities and driver info (ethtool <iface>)"""
+        """Get interface hardware capabilities and driver information."""
         return _disc.eth_info(iface)
     
     @mcp.tool()
     def hostname_ips() -> dict:
-        """All IP addresses for local hostname (hostname -I)"""
+        """Get all IP addresses for local hostname."""
         return _disc.hostname_ips()
     
     @mcp.tool()
     def hostnamectl() -> dict:
-        """System hostname and OS metadata (hostnamectl status)"""
+        """Get system hostname and OS metadata."""
         return _disc.hostnamectl()
     
-    # Network Manager & Wireless
     @mcp.tool()
     def nmcli_status() -> dict:
-        """NetworkManager device connection status (nmcli device status)"""
+        """Get NetworkManager device connection status."""
         return _disc.nmcli_status()
     
     @mcp.tool()
     def iwconfig(iface: str = "wlan0") -> dict:
-        """Wireless interface parameters (iwconfig <iface>)"""
+        """Get wireless interface parameters."""
         return _disc.iwconfig(iface)
     
     @mcp.tool()
     def iwlist_scan(iface: str = "wlan0", subcmd: str = "scan") -> dict:
-        """Scan for available wireless networks (iwlist <iface> scan)"""
+        """Scan for available wireless networks."""
         return _disc.iwlist_scan(iface, subcmd)
     
-    # ARP & Neighbor Discovery
     @mcp.tool()
     def arp_table() -> dict:
-        """ARP table with IP-to-MAC mappings (arp -n)"""
+        """Get ARP table with IP-to-MAC mappings."""
         return _disc.arp_table()
     
     @mcp.tool()
     def ip_neigh() -> dict:
-        """Neighbor cache for ARP and NDP (ip neigh show)"""
+        """Get neighbor cache for ARP and NDP."""
         return _disc.ip_neigh()
     
     @mcp.tool()
     def ip_route() -> dict:
-        """Routing table (ip route show)"""
+        """Get routing table."""
         return _disc.ip_route()
     
-    # DNS Resolution
     @mcp.tool()
     def resolvectl_status() -> dict:
-        """DNS resolver configuration (resolvectl status)"""
+        """Get DNS resolver configuration."""
         return _disc.resolvectl_status()
     
     @mcp.tool()
     def cat_resolv_conf() -> dict:
-        """/etc/resolv.conf contents (cat /etc/resolv.conf)"""
+        """Get /etc/resolv.conf contents."""
         return _disc.cat_resolv_conf()
     
     @mcp.tool()
     def dig(domain: str, dns: str | None = None) -> dict:
-        """DNS query with dig (dig [@dns] <domain>)"""
+        """Perform DNS query with dig."""
         return _disc.dig(domain, dns)
     
     @mcp.tool()
     def host(domain: str) -> dict:
-        """Simple DNS lookup (host <domain>)"""
+        """Perform simple DNS lookup."""
         return _disc.host(domain)
     
     @mcp.tool()
     def nslookup(domain: str) -> dict:
-        """Legacy DNS query (nslookup <domain>)"""
+        """Perform legacy DNS query."""
         return _disc.nslookup(domain)
     
-    # Connectivity & Latency
     @mcp.tool()
     def ping_host(address: str, count: int = 3) -> dict:
-        """ICMP reachability and latency test (ping -c <count> <address>)"""
+        """Test ICMP reachability and latency."""
         return _disc.ping_host(address, count)
     
     @mcp.tool()
     def traceroute(domain: str) -> dict:
-        """Trace network path (traceroute <host>)"""
+        """Trace network path to destination."""
         return _disc.traceroute(domain)
     
     @mcp.tool()
     def tracepath(domain: str) -> dict:
-        """Trace path without root (tracepath <host>)"""
+        """Trace path without root privileges."""
         return _disc.tracepath(domain)
     
-    # Sockets & Connections
     @mcp.tool()
     def ss_summary(options: str = "tulwn") -> dict:
-        """Socket statistics and connections (ss -<options>)"""
+        """Get socket statistics and active connections."""
         return _disc.ss_summary(options)
     
-    # Traffic Control
     @mcp.tool()
     def tc_qdisc_show(iface: str) -> dict:
-        """Traffic control qdisc config and stats (tc -s qdisc show dev <iface>)"""
+        """Get traffic control qdisc configuration and stats."""
         return _disc.tc_qdisc_show(iface)
     
-    # Firewall & Filtering
     @mcp.tool()
     def nft_list_ruleset() -> dict:
-        """Nftables firewall ruleset (nft list ruleset)"""
+        """Get nftables firewall ruleset."""
         return _disc.nft_list_ruleset()
     
     @mcp.tool()
     def iptables_list() -> dict:
-        """Iptables firewall rules (iptables -L -v -n)"""
+        """Get iptables firewall rules."""
         return _disc.iptables_list()
     
-    # ============================================================================
+    # ========================================================================
     # DIRECT APPLY TOOLS
-    # ============================================================================
+    # ========================================================================
     
     @mcp.tool()
     def set_sysctl(kv: dict[str, str]) -> dict:
         """
-        Apply sysctl kernel parameters directly.
+        Apply kernel parameters directly via sysctl.
         
-        Executes 'sysctl -w key=value' for each parameter in sorted order.
-        Stops on first error and returns partial results.
+        Executes sysctl commands in sorted order. Stops on first error.
+        For production use, prefer apply_rendered_plan_tool() which includes
+        validation and automatic rollback.
         
         Args:
-            kv: Dictionary of sysctl parameter names to values
-                Example: {"net.ipv4.tcp_congestion_control": "bbr", ...}
-                
+            kv: Dictionary of parameter names to values
+            
         Returns:
-            dict with ok status, exit code, stdout, stderr
+            dict with ok status, exit_code, stdout, stderr
         """
         return _apply_sysctl.set_sysctl(kv)
     
     @mcp.tool()
     def apply_tc_script(lines: list[str]) -> dict:
         """
-        Execute traffic control (tc) commands from a script.
+        Execute traffic control commands directly.
         
-        Runs each tc command line sequentially. Use for qdisc, class, and filter
-        configuration. Commands should not include shebang or comments.
+        Runs tc commands sequentially without validation or rollback.
+        For production use, prefer apply_rendered_plan_tool().
         
         Args:
-            lines: List of tc command strings (e.g., ["tc qdisc add dev eth0 root fq", ...])
+            lines: List of tc command strings
             
         Returns:
-            dict with ok status, exit code, stdout, stderr
+            dict with ok status, exit_code, stdout, stderr
         """
         return _apply_tc.apply_tc_script(lines)
     
     @mcp.tool()
     def apply_nft_ruleset(ruleset: str) -> dict:
         """
-        Apply a complete nftables ruleset via 'nft -f'.
+        Apply a complete nftables ruleset directly.
         
-        The ruleset should be a complete nftables configuration with tables,
-        chains, and rules. Use flush rules to clear existing state if needed.
+        Loads the ruleset via 'nft -f' without validation or rollback.
+        For production use, prefer apply_rendered_plan_tool().
         
         Args:
-            ruleset: Complete nftables configuration as string
+            ruleset: Complete nftables configuration
             
         Returns:
-            dict with ok status, exit code, stdout, stderr
+            dict with ok status, exit_code, stdout, stderr
         """
         return _apply_nft.apply_nft_ruleset(ruleset)
     
-    # ============================================================================
-    # AUDIT LOG TOOLS
-    # ============================================================================
+    # ========================================================================
+    # AUDIT LOGGING
+    # ========================================================================
     
     @mcp.tool()
     def get_audit_log_tool(limit: int = 50) -> dict:
         """
-        Get recent audit log entries showing all system changes.
+        Get recent audit log entries.
         
-        Returns a history of all configuration changes, commands executed,
-        validations performed, and rollback operations with timestamps and context.
+        Returns history of all configuration changes, command executions,
+        validations, and rollback operations with timestamps.
         
         Args:
-            limit: Maximum number of recent entries to return (default: 50)
+            limit: Maximum number of recent entries (default: 50)
             
         Returns:
-            dict with entries list containing audit log records
+            dict with count and entries list
         """
         from .tools.audit_log import get_audit_logger
         
@@ -500,18 +513,18 @@ def register_tools(mcp):
         """
         Search audit log entries by criteria.
         
-        Filter audit log by action type, checkpoint ID, or date range.
-        All filters are optional and can be combined.
+        Filter by action type, checkpoint ID, or date range. All filters
+        are optional and can be combined.
         
         Args:
-            action: Filter by action type (e.g., 'apply_plan', 'validate_plan', 
-                   'create_checkpoint', 'rollback', 'execute_command', 'validation_test')
-            checkpoint_id: Filter by specific checkpoint ID
-            start_date: Filter entries after this ISO timestamp
-            end_date: Filter entries before this ISO timestamp
+            action: Filter by action type (apply_plan, validate_plan,
+                   create_checkpoint, rollback, execute_command, validation_test)
+            checkpoint_id: Filter by checkpoint ID
+            start_date: Filter entries after ISO timestamp
+            end_date: Filter entries before ISO timestamp
             
         Returns:
-            dict with matching entries list
+            dict with count, filters, and matching entries
         """
         from .tools.audit_log import get_audit_logger
         
@@ -529,4 +542,4 @@ def register_tools(mcp):
             },
             "entries": entries
         }
-    
+
