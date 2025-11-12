@@ -75,7 +75,8 @@ def validate_change_plan(parameter_plan: dict) -> dict:
         return {"ok": False, "errors": errors, "plan": None}
     
     # Validate profile name against profiles.yaml
-    VALID_PROFILES = ["gaming", "streaming", "video_calls", "bulk_transfer", "server"]
+    # Note: "balanced" is a special validation-only profile, not in profiles.yaml
+    VALID_PROFILES = ["gaming", "streaming", "video_calls", "bulk_transfer", "server", "balanced"]
     if validated_plan.profile not in VALID_PROFILES:
         errors.append(
             f"Invalid profile '{validated_plan.profile}'. Must be one of: {', '.join(VALID_PROFILES)}"
