@@ -115,7 +115,8 @@ def measure_latency(
 
 def measure_multi_host_latency(
     hosts: Optional[List[str]] = None,
-    count: int = 10
+    count: int = 10,
+    timeout: int = 40
 ) -> Dict:
     """
     Measure latency to multiple hosts and return aggregated results.
@@ -123,6 +124,7 @@ def measure_multi_host_latency(
     Args:
         hosts: List of hosts to test (default: common DNS servers)
         count: Number of pings per host
+        timeout: Timeout per host test in seconds
     
     Returns:
         {
@@ -140,7 +142,7 @@ def measure_multi_host_latency(
     latencies = []
     
     for host in hosts:
-        result = measure_latency(host=host, count=count)
+        result = measure_latency(host=host, count=count, timeout=timeout)
         results[host] = result
         if result.get("available"):
             latencies.append((host, result["avg_ms"]))
@@ -406,19 +408,23 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
     # Adjust test parameters based on profile
     if profile == "gaming":
         # Gaming: Focus on latency and jitter, more ping samples
-        latency_result = measure_latency(host="8.8.8.8", count=30)
+        # Increase timeout to accommodate 30 pings (30 pings * 2s timeout per ping + buffer)
+        latency_result = measure_latency(host="8.8.8.8", count=30, timeout=75)
         results["tests"]["latency"] = latency_result
         
-        # Test to multiple gaming-relevant servers
+        # Test to multiple gaming-relevant servers with increased timeout
+        # 15 pings * 2s per ping + buffer = 40s per host
         multi_latency = measure_multi_host_latency(
             hosts=["8.8.8.8", "1.1.1.1"],
-            count=15
+            count=15,
+            timeout=40
         )
         results["tests"]["multi_latency"] = multi_latency
         
     elif profile in ["streaming", "bulk_transfer"]:
         # Streaming/Bulk: Focus on bandwidth, include iperf3
-        latency_result = measure_latency(host="8.8.8.8", count=10)
+        # Increase timeout for 10 pings (10 * 2s + buffer = 25s)
+        latency_result = measure_latency(host="8.8.8.8", count=10, timeout=25)
         results["tests"]["latency"] = latency_result
         
         throughput_result = measure_tcp_throughput(duration=10)
@@ -426,7 +432,8 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
         
     else:  # video_calls, server, balanced
         # Balanced: All tests with moderate samples
-        latency_result = measure_latency(host="8.8.8.8", count=20)
+        # Increase timeout for 20 pings (20 * 2s + buffer = 45s)
+        latency_result = measure_latency(host="8.8.8.8", count=20, timeout=45)
         results["tests"]["latency"] = latency_result
     
     # Common tests for all profiles
