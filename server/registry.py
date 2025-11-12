@@ -19,6 +19,9 @@ from .tools.validation_metrics import run_full_benchmark
 from .tools.validation_engine import ValidationEngine
 from .tools.audit_log import get_audit_logger
 from .tools.audit_log import get_audit_logger
+import tempfile
+from .tools.validation_metrics import run_full_benchmark
+from .tools.validation_engine import ValidationEngine
 
 
 def register_resources(mcp, policy_registry):
@@ -180,125 +183,136 @@ def register_tools(mcp):
         """
         return delete_checkpoint(checkpoint_id)
     
-    # @mcp.tool()
-    # def test_network_performance_tool(profile: str = "gaming") -> dict:
-    #     """
-    #     Run comprehensive network performance benchmarks.
+    # Benchmarking and Testing Tools
+
+    @mcp.tool()
+    def test_network_performance_tool(profile: str = "gaming") -> dict:
+        """
+        Run comprehensive network performance benchmarks.
         
-    #     Executes profile-specific tests to measure latency, jitter, packet loss,
-    #     DNS resolution, and connection speeds. Use before and after configuration
-    #     changes to measure impact.
+        Executes profile-specific tests to measure latency, jitter, packet loss,
+        DNS resolution, and connection speeds. Use before and after configuration
+        changes to measure impact.
         
-    #     Profiles:
-    #     - gaming: Latency and jitter focused (20-30 pings)
-    #     - throughput: Bandwidth tests with iperf3
-    #     - balanced: Mixed tests with moderate samples
-    #     - low-latency: Ultra-strict latency testing
+        Profiles (from profiles.yaml):
+        - gaming: Latency and jitter focused (30 pings, multi-host tests)
+        - streaming: Bandwidth tests with iperf3 (10-second tests)
+        - video_calls: Balanced tests for video conferencing
+        - bulk_transfer: Maximum throughput testing (60-second iperf3)
+        - server: Server workload testing with concurrency focus
+        - balanced: Mixed tests with moderate samples
         
-    #     Args:
-    #         profile: Test profile to use
+        Args:
+            profile: Test profile to use
             
-    #     Returns:
-    #         dict with latency, jitter, packet_loss, dns_resolution,
-    #         connection_time, and optional throughput metrics
-    #     """
-    #     return run_full_benchmark(profile)
+        Returns:
+            dict with latency, jitter, packet_loss, dns_resolution,
+            connection_time, and optional throughput metrics
+        """
+        return run_full_benchmark(profile)
     
-    # @mcp.tool()
-    # def quick_latency_test_tool() -> dict:
-    #     """
-    #     Quick 10-ping latency test for rapid comparisons.
+    @mcp.tool()
+    def quick_latency_test_tool() -> dict:
+        """
+        Quick 10-ping latency test for rapid comparisons.
         
-    #     Useful during interactive optimization sessions for fast before/after
-    #     measurements.
+        Useful during interactive optimization sessions for fast before/after
+        measurements.
         
-    #     Returns:
-    #         dict with avg_ms, jitter_ms, packet_loss_percent
-    #     """
-    #     from .tools.validation_metrics import quick_latency_test
-    #     return quick_latency_test()
+        Returns:
+            dict with avg_ms, jitter_ms, packet_loss_percent
+        """
+        from .tools.validation_metrics import quick_latency_test
+        return quick_latency_test()
     
-    # @mcp.tool()
-    # def validate_configuration_changes_tool(
-    #     before_results: dict,
-    #     after_results: dict,
-    #     profile: str = "gaming"
-    # ) -> dict:
-    #     """
-    #     Compare before/after performance and recommend action.
+    @mcp.tool()
+    def validate_configuration_changes_tool(
+        before_results: dict,
+        after_results: dict,
+        profile: str = "gaming"
+    ) -> dict:
+        """
+        Compare before/after performance and recommend action.
         
-    #     Analyzes benchmark results and provides KEEP, ROLLBACK, or UNCERTAIN
-    #     decision based on profile-specific criteria and weighted metrics.
+        Analyzes benchmark results and provides KEEP, ROLLBACK, or UNCERTAIN
+        decision based on profile-specific criteria and weighted metrics.
         
-    #     Decision criteria by profile:
-    #     - gaming: Latency 40%, jitter 30%, packet loss 20%, connection 10%
-    #     - throughput: Bandwidth 50%, stability 20%, retransmits 20%, connection 10%
-    #     - balanced: Equal weight to latency and throughput
-    #     - low-latency: Ultra-strict on latency (any increase triggers ROLLBACK)
+        Decision criteria by profile:
+        - gaming: Latency 40%, jitter 30%, packet loss 20%, connection 10%
+        - streaming: Bandwidth 50%, latency stability 20%, retransmits 20%, connection 10%
+        - video_calls: Latency 35%, jitter 35%, packet loss 20%, connection 10%
+        - bulk_transfer: Throughput 70%, stability 15%, retransmits 15%
+        - server: Latency stability 30%, connection reliability 30%, throughput 20%, DNS 20%
+        - balanced: Equal weight to gaming and streaming criteria
+        - low-latency: Ultra-strict on latency (any increase triggers ROLLBACK)
         
-    #     Args:
-    #         before_results: Benchmark before changes
-    #         after_results: Benchmark after changes
-    #         profile: Validation profile
+        Supported profiles: gaming, streaming, video_calls, bulk_transfer, server, balanced, low-latency
+        Legacy alias: throughput → streaming
+        
+        Args:
+            before_results: Benchmark before changes
+            after_results: Benchmark after changes
+            profile: Validation profile
             
-    #     Returns:
-    #         dict with decision, score (0-100), summary, reasons, and
-    #         detailed metrics comparison
-    #     """
-    #     return ValidationEngine.compare_benchmark(before_results, after_results, profile)
+        Returns:
+            dict with decision, score (0-100), summary, reasons, and
+            detailed metrics comparison
+        """
+        return ValidationEngine.compare_benchmarks(before_results, after_results, profile)
     
-    # @mcp.tool()
-    # def auto_validate_and_rollback_tool(
-    #     checkpoint_id: str,
-    #     before_results: dict,
-    #     after_results: dict,
-    #     profile: str = "gaming",
-    #     auto_rollback: bool = True
-    # ) -> dict:
-    #     """
-    #     Automated validation with conditional rollback.
+    @mcp.tool()
+    def auto_validate_and_rollback_tool(
+        checkpoint_id: str,
+        before_results: dict,
+        after_results: dict,
+        profile: str = "gaming",
+        auto_rollback: bool = True
+    ) -> dict:
+        """
+        Automated validation with conditional rollback.
         
-    #     Combines performance validation with automatic rollback for
-    #     streamlined testing workflows. If performance degrades, automatically
-    #     reverts to checkpoint.
+        Combines performance validation with automatic rollback for
+        streamlined testing workflows. If performance degrades, automatically
+        reverts to checkpoint.
         
-    #     Args:
-    #         checkpoint_id: Checkpoint to rollback to if needed
-    #         before_results: Benchmark before changes
-    #         after_results: Benchmark after changes
-    #         profile: Validation profile
-    #         auto_rollback: Enable automatic rollback on degradation
+        Args:
+            checkpoint_id: Checkpoint to rollback to if needed
+            before_results: Benchmark before changes
+            after_results: Benchmark after changes
+            profile: Validation profile
+            auto_rollback: Enable automatic rollback on degradation
             
-    #     Returns:
-    #         dict with validation results, action_taken (KEPT/ROLLED_BACK/NO_ACTION),
-    #         and optional rollback_result
-    #     """
-    #     from .tools.validation_engine import ValidationEngine
+        Returns:
+            dict with validation results, action_taken (KEPT/ROLLED_BACK/NO_ACTION),
+            and optional rollback_result
+        """
+        from .tools.validation_engine import ValidationEngine
         
-    #     validation = ValidationEngine.compare_benchmarks(before_results, after_results, profile)
+        validation = ValidationEngine.compare_benchmarks(before_results, after_results, profile)
         
-    #     action_taken = "NO_ACTION"
-    #     result = {"validation": validation}
+        action_taken = "NO_ACTION"
+        result = {"validation": validation}
         
-    #     if validation["decision"] == "ROLLBACK" and auto_rollback:
-    #         rollback_result = rollback_to_checkpoint(checkpoint_id)
-    #         result["rollback_result"] = rollback_result
-    #         if rollback_result.get("ok"):
-    #             action_taken = "ROLLED_BACK"
-    #             result["message"] = "Configuration rolled back due to performance degradation"
-    #         else:
-    #             action_taken = "ROLLBACK_FAILED"
-    #             result["message"] = "Rollback attempted but failed - manual intervention required"
-    #     elif validation["decision"] == "KEEP":
-    #         action_taken = "KEPT"
-    #         result["message"] = "Configuration changes kept - performance improved"
-    #     elif validation["decision"] == "UNCERTAIN":
-    #         action_taken = "KEPT"
-    #         result["message"] = "Configuration kept but results uncertain - manual review recommended"
+        if validation["decision"] == "ROLLBACK" and auto_rollback:
+            rollback_result = rollback_to_checkpoint(checkpoint_id)
+            result["rollback_result"] = rollback_result
+            if rollback_result.get("ok"):
+                action_taken = "ROLLED_BACK"
+                result["message"] = "Configuration rolled back due to performance degradation"
+            else:
+                action_taken = "ROLLBACK_FAILED"
+                result["message"] = "Rollback attempted but failed - manual intervention required"
+        elif validation["decision"] == "KEEP":
+            action_taken = "KEPT"
+            result["message"] = "Configuration changes kept - performance improved"
+        elif validation["decision"] == "UNCERTAIN":
+            action_taken = "KEPT"
+            result["message"] = "Configuration kept but results uncertain - manual review recommended"
         
-    #     result["action_taken"] = action_taken
-    #     return result
+        result["action_taken"] = action_taken
+        return result
     
+        
 # Discovery Tools
     
     @mcp.tool()
