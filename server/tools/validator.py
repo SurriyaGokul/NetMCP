@@ -4,7 +4,6 @@ from typing import Dict, Any
 from ..schema.models import ParameterPlan
 from .audit_log import log_plan_validation
 
-# Cache for validation limits (loaded once)
 _validation_limits_cache: Dict[str, Any] = None
 
 def load_validation_limits() -> Dict[str, Any]:
@@ -74,8 +73,6 @@ def validate_change_plan(parameter_plan: dict) -> dict:
         errors.append(f"Schema validation failed: {str(e)}")
         return {"ok": False, "errors": errors, "plan": None}
     
-    # Validate profile name against profiles.yaml
-    # Note: "balanced" is a special validation-only profile, not in profiles.yaml
     VALID_PROFILES = ["gaming", "streaming", "video_calls", "bulk_transfer", "server"]
     if validated_plan.profile not in VALID_PROFILES:
         errors.append(
@@ -94,7 +91,6 @@ def validate_change_plan(parameter_plan: dict) -> dict:
                     f"Invalid DSCP value: {rule.dscp}. Must be one of {sorted(valid_dscp)}"
                 )
     
-    # Additional validation: Bandwidth limits
     if validated_plan.changes.shaper:
         shaper = validated_plan.changes.shaper
         bandwidth_config = limits.get('bandwidth', {})

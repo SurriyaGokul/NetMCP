@@ -98,6 +98,9 @@ def measure_latency(
     
     packet_loss = ((packets_sent - packets_received) / packets_sent) * 100
     
+    # Calculate jitter as standard deviation (proper measure of variability)
+    jitter = statistics.stdev(times) if len(times) > 1 else 0.0
+    
     return {
         "available": True,
         "host": host,
@@ -105,11 +108,12 @@ def measure_latency(
         "min_ms": min(times),
         "avg_ms": statistics.mean(times),
         "max_ms": max(times),
-        "jitter_ms": max(times) - min(times),
-        "stddev_ms": statistics.stdev(times) if len(times) > 1 else 0.0,
+        "jitter_ms": jitter,
+        "stddev_ms": jitter,
+        "range_ms": max(times) - min(times),
         "packet_loss_percent": packet_loss,
         "raw_times": times,
-        "message": f"Latency: avg={statistics.mean(times):.2f}ms, jitter={max(times) - min(times):.2f}ms, loss={packet_loss:.1f}%"
+        "message": f"Latency: avg={statistics.mean(times):.2f}ms, jitter={jitter:.2f}ms, loss={packet_loss:.1f}%"
     }
 
 
@@ -171,16 +175,16 @@ def measure_multi_host_latency(
 
 
 def measure_tcp_throughput(
-    host: str = "127.0.0.1",
-    port: int = 5001,
+    host: str = "iperf.he.net",
+    port: int = 5201,
     duration: int = 5
 ) -> Dict:
     """
     Measure TCP throughput using iperf3 (if available).
     
     Args:
-        host: iperf3 server address
-        port: iperf3 server port
+        host: iperf3 server address (default: Hurricane Electric public server)
+        port: iperf3 server port (default: 5201 - standard iperf3 port)
         duration: Test duration in seconds
     
     Returns:
@@ -190,6 +194,11 @@ def measure_tcp_throughput(
             "retransmits": int,
             "message": str
         }
+    
+    Note:
+        Default uses public iperf3 server. For local testing, use:
+        - host="127.0.0.1" (requires: iperf3 -s)
+        - Or specify your own server
     """
     # Check if iperf3 is installed
     success, stdout, stderr = _run_command(["which", "iperf3"], timeout=2)
@@ -407,13 +416,9 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
     
     # Adjust test parameters based on profile
     if profile == "gaming":
-        # Gaming: Focus on latency and jitter, more ping samples
-        # Increase timeout to accommodate 30 pings (30 pings * 2s timeout per ping + buffer)
         latency_result = measure_latency(host="8.8.8.8", count=30, timeout=75)
         results["tests"]["latency"] = latency_result
-        
-        # Test to multiple gaming-relevant servers with increased timeout
-        # 15 pings * 2s per ping + buffer = 40s per host
+
         multi_latency = measure_multi_host_latency(
             hosts=["8.8.8.8", "1.1.1.1"],
             count=15,
@@ -422,8 +427,6 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
         results["tests"]["multi_latency"] = multi_latency
         
     elif profile in ["streaming", "bulk_transfer"]:
-        # Streaming/Bulk: Focus on bandwidth, include iperf3
-        # Increase timeout for 10 pings (10 * 2s + buffer = 25s)
         latency_result = measure_latency(host="8.8.8.8", count=10, timeout=25)
         results["tests"]["latency"] = latency_result
         
@@ -431,8 +434,6 @@ def run_full_benchmark(profile: str = "gaming") -> Dict:
         results["tests"]["throughput"] = throughput_result
         
     else:  # video_calls, server, balanced
-        # Balanced: All tests with moderate samples
-        # Increase timeout for 20 pings (20 * 2s + buffer = 45s)
         latency_result = measure_latency(host="8.8.8.8", count=20, timeout=45)
         results["tests"]["latency"] = latency_result
     

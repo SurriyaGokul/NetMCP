@@ -1,88 +1,85 @@
 from __future__ import annotations
-from typing import List, Dict, Optional, Literal
-from pydantic import BaseModel, Field, conint, confloat, constr, RootModel
-
-NonEmptyStr = constr(strip_whitespace=True, min_length=1)
-Min3Str = constr(min_length=3)
+from typing import List, Dict, Optional, Literal, Union
+from pydantic import BaseModel, Field, RootModel
 
 class ValidateTargets(BaseModel):
-    ping: Optional[NonEmptyStr] = None
-    iperf: Optional[NonEmptyStr] = None
+    ping: Optional[str] = None
+    iperf: Optional[str] = None
 
 class ValidateObjectives(BaseModel):
-    latency_p95_ms: Optional[confloat(gt=0, le=1000)] = None
-    jitter_ms: Optional[confloat(ge=0, le=500)] = None
-    loss_pct: Optional[confloat(ge=0, le=100)] = None
-    throughput_mbps: Optional[confloat(gt=0)] = None
+    latency_p95_ms: Optional[float] = None
+    jitter_ms: Optional[float] = None
+    loss_pct: Optional[float] = None
+    throughput_mbps: Optional[float] = None
 
 class ValidateSpec(BaseModel):
     targets: Optional[ValidateTargets] = None
     objectives: Optional[ValidateObjectives] = None
-
+    
 class Qdisc(BaseModel):
-    type: Literal["cake", "fq_codel", "htb", "fq", "pfifo_fast"]
+    type: str  # cake, fq_codel, htb, fq, pfifo_fast, or any valid qdisc
     params: Dict[str, object] = Field(default_factory=dict) 
 
 class Shaper(BaseModel):
-    ingress_mbit: Optional[conint(gt=0, le=100000)] = None
-    egress_mbit: Optional[conint(gt=0, le=100000)] = None
-    ceil_mbit: Optional[conint(gt=0, le=100000)] = None
+    ingress_mbit: Optional[int] = None
+    egress_mbit: Optional[int] = None
+    ceil_mbit: Optional[int] = None
 
 class Netem(BaseModel):
     """Network emulation parameters for tc netem"""
-    delay_ms: Optional[conint(ge=0, le=10000)] = None
-    delay_jitter_ms: Optional[conint(ge=0, le=1000)] = None
-    loss_pct: Optional[confloat(ge=0, le=100)] = None
-    duplicate_pct: Optional[confloat(ge=0, le=100)] = None
-    corrupt_pct: Optional[confloat(ge=0, le=100)] = None
-    reorder_pct: Optional[confloat(ge=0, le=100)] = None
+    delay_ms: Optional[int] = None
+    delay_jitter_ms: Optional[int] = None
+    loss_pct: Optional[float] = None
+    duplicate_pct: Optional[float] = None
+    corrupt_pct: Optional[float] = None
+    reorder_pct: Optional[float] = None
 
 class HTBClass(BaseModel):
     """HTB class configuration"""
     classid: str  # e.g., "1:10"
-    rate_mbit: conint(gt=0, le=100000)
-    ceil_mbit: Optional[conint(gt=0, le=100000)] = None
-    priority: Optional[conint(ge=0, le=7)] = None
+    rate_mbit: int
+    ceil_mbit: Optional[int] = None
+    priority: Optional[int] = None
     burst: Optional[str] = None  # e.g., "15k"
 
 class SysctlSet(RootModel):
-    root: Dict[str, str]
+    root: Dict[str, Union[str, int, float]]
 
 class DSCPMatch(BaseModel):
-    proto: Optional[Literal["tcp", "udp"]] = None
-    sports: Optional[List[conint(gt=0, lt=65536)]] = None
-    dports: Optional[List[conint(gt=0, lt=65536)]] = None
+    proto: Optional[str] = None  # tcp, udp, or any protocol
+    sports: Optional[List[int]] = None
+    dports: Optional[List[int]] = None
     src: Optional[str] = None   # cidr string
     dst: Optional[str] = None
 
 class DSCPRule(BaseModel):
     match: DSCPMatch
-    dscp: Literal["EF", "CS6", "CS5", "CS4", "AF41", "AF42", "AF43"]
+    dscp: str  # EF, CS6, CS5, CS4, AF41, AF42, AF43, or any valid DSCP
 
 class ConnectionLimit(BaseModel):
     """iptables/nftables connection limiting"""
-    protocol: Literal["tcp", "udp"]
-    port: conint(gt=0, lt=65536)
-    limit: conint(gt=0, le=10000)
-    mask: Optional[conint(ge=0, le=32)] = 32  # CIDR mask for subnet limiting
+    protocol: str  # tcp, udp, or any protocol
+    port: int
+    limit: int
+    mask: Optional[int] = 32  # CIDR mask for subnet limiting
 
 class RateLimit(BaseModel):
     """iptables/nftables rate limiting"""
     rate: str  # e.g., "150/second", "1000/minute"
-    burst: Optional[conint(gt=0, le=1000)] = None
+    burst: Optional[int] = None
 
 class ConnectionTracking(BaseModel):
     """Connection tracking configuration"""
-    max_connections: Optional[conint(gt=0, le=10000000)] = None
-    tcp_timeout_established: Optional[conint(gt=0, le=432000)] = None  # seconds
-    tcp_timeout_close_wait: Optional[conint(gt=0, le=3600)] = None
+    max_connections: Optional[int] = None
+    tcp_timeout_established: Optional[int] = None  # seconds
+    tcp_timeout_close_wait: Optional[int] = None
 
 class NATRule(BaseModel):
     """NAT rule configuration"""
-    type: Literal["snat", "dnat", "masquerade"]
+    type: str  # snat, dnat, masquerade
     iface: Optional[str] = None
     to_addr: Optional[str] = None  # for SNAT/DNAT
-    to_port: Optional[conint(gt=0, lt=65536)] = None
+    to_port: Optional[int] = None
 
 class Changes(BaseModel):
     qdisc: Optional[Qdisc] = None
@@ -97,14 +94,13 @@ class Changes(BaseModel):
     nat_rules: Optional[List[NATRule]] = None
 
 class ParameterPlan(BaseModel):
-    iface: NonEmptyStr = Field(..., alias='interface', description="Network interface name (e.g., 'eth0', 'wlan0')")
-    profile: NonEmptyStr = Field(..., description="Profile name from available profiles")
+    model_config = {"populate_by_name": True}  # Pydantic v2: Allow both 'iface' and 'interface'
+    
+    iface: str = Field(..., alias='interface', description="Network interface name (e.g., 'eth0', 'wlan0')")
+    profile: str = Field(..., description="Profile name from available profiles")
     changes: Changes = Field(..., description="Network configuration changes to apply")
     validation: Optional[ValidateSpec] = Field(None, description="Optional validation targets and objectives")
-    rationale: Optional[NonEmptyStr] = Field(None, description="Optional explanation for the changes")
-    
-    class Config:
-        populate_by_name = True  # Allow both 'iface' and 'interface'
+    rationale: Optional[str] = Field(None, description="Optional explanation for the changes")
 
 class RenderedPlan(BaseModel):
     sysctl_cmds: List[str] = Field(default_factory=list)      # ["sysctl -w net.ipv4.tcp_congestion_control=bbr", ...]
