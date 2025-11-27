@@ -1,4 +1,4 @@
-# MCP Network Optimizer
+# NetMCP
 
 <div align="center">
 
