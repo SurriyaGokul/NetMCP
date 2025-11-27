@@ -1131,28 +1131,3 @@ mypy server/
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-## 🙏 Acknowledgments
-
-- **FastMCP**: Model Context Protocol framework by [jlowin](https://github.com/jlowin/fastmcp)
-- **BBR Congestion Control**: Research by Google ([paper](https://queue.acm.org/detail.cfm?id=3022184))
-- **Linux Networking Stack**: The Linux kernel community
-- **Pydantic**: Data validation and settings management
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/SurriyaGokul/mcp-net-optimizer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/SurriyaGokul/mcp-net-optimizer/discussions)
-- **Email**: your-email@example.com
-
----
-
-<div align="center">
-
-**Made with ❤️ by the MCP Network Optimizer team**
-
-[⭐ Star us on GitHub](https://github.com/SurriyaGokul/mcp-net-optimizer) • [🐛 Report Bug](https://github.com/SurriyaGokul/mcp-net-optimizer/issues) • [💡 Request Feature](https://github.com/SurriyaGokul/mcp-net-optimizer/issues)
-
-</div>
