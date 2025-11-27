@@ -17,7 +17,7 @@ class ValidateSpec(BaseModel):
     objectives: Optional[ValidateObjectives] = None
     
 class Qdisc(BaseModel):
-    type: str  # cake, fq_codel, htb, fq, pfifo_fast, or any valid qdisc
+    type: str
     params: Dict[str, object] = Field(default_factory=dict) 
 
 class Shaper(BaseModel):
@@ -26,7 +26,6 @@ class Shaper(BaseModel):
     ceil_mbit: Optional[int] = None
 
 class Netem(BaseModel):
-    """Network emulation parameters for tc netem"""
     delay_ms: Optional[int] = None
     delay_jitter_ms: Optional[int] = None
     loss_pct: Optional[float] = None
@@ -35,50 +34,45 @@ class Netem(BaseModel):
     reorder_pct: Optional[float] = None
 
 class HTBClass(BaseModel):
-    """HTB class configuration"""
-    classid: str  # e.g., "1:10"
+    classid: str
     rate_mbit: int
     ceil_mbit: Optional[int] = None
     priority: Optional[int] = None
-    burst: Optional[str] = None  # e.g., "15k"
+    burst: Optional[str] = None
 
 class SysctlSet(RootModel):
     root: Dict[str, Union[str, int, float]]
 
 class DSCPMatch(BaseModel):
-    proto: Optional[str] = None  # tcp, udp, or any protocol
+    proto: Optional[str] = None
     sports: Optional[List[int]] = None
     dports: Optional[List[int]] = None
-    src: Optional[str] = None   # cidr string
+    src: Optional[str] = None
     dst: Optional[str] = None
 
 class DSCPRule(BaseModel):
     match: DSCPMatch
-    dscp: str  # EF, CS6, CS5, CS4, AF41, AF42, AF43, or any valid DSCP
+    dscp: str
 
 class ConnectionLimit(BaseModel):
-    """iptables/nftables connection limiting"""
-    protocol: str  # tcp, udp, or any protocol
+    protocol: str
     port: int
     limit: int
-    mask: Optional[int] = 32  # CIDR mask for subnet limiting
+    mask: Optional[int] = 32
 
 class RateLimit(BaseModel):
-    """iptables/nftables rate limiting"""
-    rate: str  # e.g., "150/second", "1000/minute"
+    rate: str
     burst: Optional[int] = None
 
 class ConnectionTracking(BaseModel):
-    """Connection tracking configuration"""
     max_connections: Optional[int] = None
-    tcp_timeout_established: Optional[int] = None  # seconds
+    tcp_timeout_established: Optional[int] = None
     tcp_timeout_close_wait: Optional[int] = None
 
 class NATRule(BaseModel):
-    """NAT rule configuration"""
-    type: str  # snat, dnat, masquerade
+    type: str
     iface: Optional[str] = None
-    to_addr: Optional[str] = None  # for SNAT/DNAT
+    to_addr: Optional[str] = None
     to_port: Optional[int] = None
 
 class Changes(BaseModel):
@@ -94,7 +88,7 @@ class Changes(BaseModel):
     nat_rules: Optional[List[NATRule]] = None
 
 class ParameterPlan(BaseModel):
-    model_config = {"populate_by_name": True}  # Pydantic v2: Allow both 'iface' and 'interface'
+    model_config = {"populate_by_name": True}
     
     iface: str = Field(..., alias='interface', description="Network interface name (e.g., 'eth0', 'wlan0')")
     profile: str = Field(..., description="Profile name from available profiles")
@@ -103,9 +97,9 @@ class ParameterPlan(BaseModel):
     rationale: Optional[str] = Field(None, description="Optional explanation for the changes")
 
 class RenderedPlan(BaseModel):
-    sysctl_cmds: List[str] = Field(default_factory=list)      # ["sysctl -w net.ipv4.tcp_congestion_control=bbr", ...]
-    tc_script: str = ""                                       # full multiline `tc` script
-    nft_script: str = ""                                      # full multiline `nft -f` script (or empty if unused)
+    sysctl_cmds: List[str] = Field(default_factory=list)
+    tc_script: str = ""
+    nft_script: str = ""
 
 class ChangeReport(BaseModel):
     applied: bool

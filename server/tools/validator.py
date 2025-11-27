@@ -7,7 +7,6 @@ from .audit_log import log_plan_validation
 _validation_limits_cache: Dict[str, Any] = None
 
 def load_validation_limits() -> Dict[str, Any]:
-    """Load validation limits from YAML file (cached)."""
     global _validation_limits_cache
     
     if _validation_limits_cache is not None:
@@ -36,21 +35,6 @@ def load_validation_limits() -> Dict[str, Any]:
         return _validation_limits_cache
 
 def validate_change_plan(parameter_plan: dict) -> dict:
-    """
-    INPUT:  ParameterPlan dict
-    OUTPUT: {"ok": bool, "errors": [str], "plan": dict}
-    
-    Args:
-        parameter_plan: The parameter plan to validate
-    
-    Validates:
-        - DSCP values are within valid range
-        - Bandwidth values are within limits
-        - No unknown keys are present in the plan
-        - All required fields are present
-    """    
-    
-    # Load validation limits from YAML
     limits = load_validation_limits()
     
     if not isinstance(parameter_plan, dict):

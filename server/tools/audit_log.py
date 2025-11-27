@@ -1,45 +1,26 @@
-"""
-Audit logging for MCP Network Optimizer.
-
-Records all configuration changes, commands executed, and system state modifications
-with timestamps and complete context for compliance and troubleshooting.
-"""
-
 import json
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-
-# Audit log location
 AUDIT_DIR = Path.home() / ".mcp-net-optimizer" / "audit_logs"
 CURRENT_LOG = AUDIT_DIR / "current.log"
 AUDIT_JSON = AUDIT_DIR / "audit_log.json"
 
 
 def _ensure_audit_dir():
-    """Create audit directory if it doesn't exist."""
     AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _rotate_log_if_needed():
-    """Rotate log file if it exceeds 10MB."""
-    if CURRENT_LOG.exists() and CURRENT_LOG.stat().st_size > 10 * 1024 * 1024:  # 10MB
+    if CURRENT_LOG.exists() and CURRENT_LOG.stat().st_size > 10 * 1024 * 1024:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         archive_name = AUDIT_DIR / f"audit_{timestamp}.log"
         CURRENT_LOG.rename(archive_name)
 
 
 class AuditLogger:
-    """
-    Audit logger for tracking all system changes and commands.
-    
-    Logs are written to both:
-    1. Text format log file (human-readable)
-    2. JSON format log file (machine-parseable)
-    """
-    
     def __init__(self):
         _ensure_audit_dir()
         _rotate_log_if_needed()
@@ -65,7 +46,6 @@ class AuditLogger:
         self.logger.propagate = False
     
     def log_plan_validation(self, plan: Dict, validation_result: Dict):
-        """Log validation of a parameter plan."""
         entry = {
             "timestamp": datetime.now().isoformat(),
             "action": "validate_plan",
@@ -84,7 +64,6 @@ class AuditLogger:
         )
     
     def log_plan_rendering(self, plan: Dict, rendered_plan: Dict):
-        """Log rendering of a parameter plan to commands."""
         entry = {
             "timestamp": datetime.now().isoformat(),
             "action": "render_plan",

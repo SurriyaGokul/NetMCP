@@ -1,8 +1,3 @@
-"""
-Performance validation metrics for network configuration changes.
-Measures latency, throughput, packet loss, and other performance indicators.
-"""
-
 import subprocess
 import statistics
 import time
@@ -11,7 +6,6 @@ from typing import Dict, List, Optional
 
 
 def _run_command(cmd: List[str], timeout: int = 30) -> tuple[bool, str, str]:
-    """Run a command and return (success, stdout, stderr)."""
     try:
         result = subprocess.run(
             cmd,

@@ -1,34 +1,20 @@
 def render_change_plan(plan: dict) -> dict:
-    """
-    Render a ParameterPlan into concrete command lists/scripts.
-    This function does not produce side effects.
-
-    Args:
-        plan (dict): The ParameterPlan to be rendered.
-
-    Returns:
-        dict: A RenderedPlan dictionary containing the rendered commands/scripts.
-    """
     from ..schema.models import ParameterPlan, RenderedPlan
     from .audit_log import log_plan_rendering
     
-    # Validate and parse the input plan
     try:
         param_plan = ParameterPlan(**plan)
     except Exception as e:
         raise ValueError(f"Invalid ParameterPlan: {e}")
     
-    # Initialize the rendered plan structure
     rendered = RenderedPlan()
     
     iface = param_plan.iface
     changes = param_plan.changes
     
-    # Render sysctl commands
     if changes.sysctl:
         rendered.sysctl_cmds = _render_sysctl(changes.sysctl)
     
-    # Render tc script (includes qdisc, shaper, netem, htb_classes)
     if changes.qdisc or changes.shaper or changes.netem or changes.htb_classes:
         rendered.tc_script = _render_tc(
             iface, 
@@ -38,7 +24,6 @@ def render_change_plan(plan: dict) -> dict:
             changes.htb_classes
         )
     
-    # Render nftables script for DSCP marking, connection limits, rate limits, NAT
     nft_sections = []
     if changes.dscp:
         nft_sections.append(("dscp", changes.dscp))
@@ -52,7 +37,6 @@ def render_change_plan(plan: dict) -> dict:
     if nft_sections:
         rendered.nft_script = _render_nft(iface, nft_sections)
     
-    # Handle connection tracking via sysctl
     if changes.connection_tracking:
         tracking_sysctls = _render_connection_tracking(changes.connection_tracking)
         if not rendered.sysctl_cmds:
@@ -68,7 +52,6 @@ def render_change_plan(plan: dict) -> dict:
 
 
 def _render_sysctl(sysctl_set) -> list:
-    """Render sysctl commands from a SysctlSet."""
     commands = []
     for key, value in sysctl_set.root.items():
         commands.append(f"sysctl -w {key}={value}")
@@ -76,7 +59,6 @@ def _render_sysctl(sysctl_set) -> list:
 
 
 def _render_tc(iface: str, qdisc=None, shaper=None, netem=None, htb_classes=None) -> str:
-    """Render tc script for qdisc, shaper, netem, and HTB class configuration."""
     lines = []
     
     # Delete existing qdiscs first

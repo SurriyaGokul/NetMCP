@@ -2,11 +2,6 @@ from server.tools.util.shell import run
 from server.tools.util.resp import resp
 
 def apply_tc_script(lines: list[str]) -> dict:
-	"""
-	Apply tc commands deterministically.
-	lines: e.g., ["tc qdisc replace dev eth0 root cake bandwidth 90mbit diffserv ecn"]
-	Returns: {ok, code, stdout, stderr}
-	"""
 	try:
 		outputs: list[str] = []
 		for line in lines:

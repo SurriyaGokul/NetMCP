@@ -3,9 +3,6 @@ from server.tools.util.resp import resp
 import tempfile, os
 
 def apply_nft_ruleset(ruleset: str) -> dict:
-	"""Atomically apply nftables ruleset; pre-check with -c.
-	Returns: {ok, code, stdout, stderr}
-	"""
 	try:
 		with tempfile.NamedTemporaryFile("w", delete=False) as f:
 			f.write(ruleset)

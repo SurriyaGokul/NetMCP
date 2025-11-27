@@ -55,15 +55,6 @@ def apply_connection_limits(limits: list[dict]) -> dict:
 
 
 def apply_rate_limits(limits: list[dict]) -> dict:
-	"""
-	Apply rate limiting rules using nftables.
-	
-	Args:
-		limits: List of rate limit rules with rate and optional burst
-	
-	Returns:
-		{ok, code, stdout, stderr}
-	"""
 	try:
 		script_lines = ["#!/usr/sbin/nft -f", ""]
 		
@@ -98,15 +89,6 @@ def apply_rate_limits(limits: list[dict]) -> dict:
 
 
 def apply_connection_tracking(tracking: dict) -> dict:
-	"""
-	Apply connection tracking configuration via sysctl.
-	
-	Args:
-		tracking: Connection tracking parameters (max_connections, timeouts)
-	
-	Returns:
-		{ok, code, stdout, stderr}
-	"""
 	try:
 		sysctl_params = {}
 		
@@ -132,15 +114,6 @@ def apply_connection_tracking(tracking: dict) -> dict:
 
 
 def apply_nat_rules(nat_rules: list[dict]) -> dict:
-	"""
-	Apply NAT rules using nftables.
-	
-	Args:
-		nat_rules: List of NAT rules with type, interface, and addresses
-	
-	Returns:
-		{ok, code, stdout, stderr}
-	"""
 	try:
 		script_lines = ["#!/usr/sbin/nft -f", ""]
 		

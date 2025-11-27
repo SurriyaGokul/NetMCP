@@ -3,17 +3,12 @@ import yaml
 import os
 from typing import List
 
-# Structured response helper
 def _mk(ok: bool, code: int = 0, stdout: str = "", stderr: str = "") -> dict:
     return {"ok": ok, "code": code, "stdout": stdout, "stderr": stderr}
 
-# Get the absolute path to the allowlist.yaml file
 ALLOWLIST_PATH = os.path.join(os.path.dirname(__file__), '../../config/allowlist.yaml')
 
 def get_allowlist() -> List[str]:
-    """
-    Reads the allowlist of binaries from the config file.
-    """
     try:
         with open(ALLOWLIST_PATH, 'r') as f:
             config = yaml.safe_load(f)
@@ -29,14 +24,9 @@ def _reject_meta(args: List[str]) -> None:
         raise PermissionError("Unsafe metacharacter detected")
 
 def run(cmd: List[str], timeout: int = 5) -> dict:
-    """
-    Run an allowlisted binary with strict args and timeout.
-    Returns: dict { ok, code, stdout, stderr }
-    """
     if not cmd:
         return _mk(False, 1, stderr="Empty command")
 
-    # Allow either absolute allowed paths from config or bare binary names listed there
     binary = cmd[0]
     allowed = set(ALLOWED_BINARIES)
     allowed_names = {os.path.basename(p) for p in ALLOWED_BINARIES}
@@ -55,19 +45,6 @@ def run(cmd: List[str], timeout: int = 5) -> dict:
         return _mk(False, 1, stderr=str(e))
 
 def run_privileged(cmd: List[str], timeout: int = 10) -> dict:
-    """
-    Run an allowlisted command with sudo (elevated privileges).
-    Requires passwordless sudo to be configured for the specified commands.
-    
-    Use setup_sudo.sh to configure passwordless sudo for network commands.
-    
-    Args:
-        cmd: Command to run as a list of strings
-        timeout: Command timeout in seconds
-    
-    Returns:
-        dict { ok, code, stdout, stderr }
-    """
     if not cmd:
         return _mk(False, 1, stderr="Empty command")
     
@@ -80,7 +57,6 @@ def run_privileged(cmd: List[str], timeout: int = 10) -> dict:
     
     _reject_meta(cmd)
     
-    # Prepend sudo -n (non-interactive)
     sudo_cmd = ["sudo", "-n"] + cmd
     
     try:
@@ -92,7 +68,6 @@ def run_privileged(cmd: List[str], timeout: int = 10) -> dict:
             check=False
         )
         
-        # Check for sudo password prompt (indicates sudo not configured)
         if p.returncode != 0 and "password" in p.stderr.lower():
             return _mk(
                 False,
@@ -111,34 +86,11 @@ def run_privileged(cmd: List[str], timeout: int = 10) -> dict:
 
 
 def is_sudo_configured() -> bool:
-    """
-    Check if passwordless sudo is configured for network commands.
-    
-    Returns:
-        True if sudo is configured, False otherwise
-    """
-    # Test with a harmless command
     result = run_privileged(["sysctl", "--version"], timeout=2)
     return result.get("ok", False)
 
 
 def run_script(script: str, interpreter: List[str], timeout: int = 30) -> str:
-    """
-    Runs a script using an interpreter after checking if the interpreter is in the allowlist.
-
-    Args:
-        script: The script to run as a string.
-        interpreter: The interpreter to use as a list of strings (e.g., ['/bin/bash', '-c']).
-        timeout: The timeout in seconds.
-
-    Returns:
-        The stdout of the script as a string.
-
-    Raises:
-        ValueError: If the interpreter is not in the allowlist.
-        subprocess.CalledProcessError: If the script fails.
-        subprocess.TimeoutExpired: If the script times out.
-    """
     if not interpreter:
         raise ValueError("Missing interpreter")
 

@@ -32,14 +32,6 @@ def _run_command(cmd: List[str], use_sudo: bool = False) -> tuple[bool, str, str
 
 
 def snapshot_checkpoint(label: str | None = None) -> dict:
-    """
-    Create a checkpoint by saving current network configuration state.
-    
-    OUTPUT: {"checkpoint_id": "checkpoint-20251102-143022", "notes": "...", "ok": True}
-    
-    Args:
-        label: Optional label for the checkpoint
-    """
     try:
         _ensure_checkpoint_dir()
         
@@ -160,14 +152,6 @@ def snapshot_checkpoint(label: str | None = None) -> dict:
 
 
 def rollback_to_checkpoint(checkpoint_id: str) -> dict:
-    """
-    Restore system state from a checkpoint.
-    
-    OUTPUT: {"ok": true, "restored": true, "notes": [...]}
-    
-    Args:
-        checkpoint_id: The ID of the checkpoint to restore
-    """
     if not isinstance(checkpoint_id, str) or not checkpoint_id:
         return {"ok": False, "restored": False, "notes": ["invalid checkpoint_id"]}
     
@@ -360,11 +344,6 @@ def rollback_to_checkpoint(checkpoint_id: str) -> dict:
 
 
 def list_checkpoints() -> dict:
-    """
-    List all available checkpoints with their metadata.
-    
-    OUTPUT: {"ok": true, "checkpoints": [...]}
-    """
     try:
         _ensure_checkpoint_dir()
         
@@ -397,11 +376,6 @@ def list_checkpoints() -> dict:
 
 
 def delete_checkpoint(checkpoint_id: str) -> dict:
-    """
-    Delete a checkpoint.
-    
-    OUTPUT: {"ok": true, "notes": "..."}
-    """
     if not isinstance(checkpoint_id, str) or not checkpoint_id:
         return {"ok": False, "notes": "invalid checkpoint_id"}
     

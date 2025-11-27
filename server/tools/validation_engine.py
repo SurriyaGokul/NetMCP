@@ -1,14 +1,7 @@
-"""
-Validation engine for comparing network performance before and after configuration changes.
-Makes intelligent decisions about whether changes improved or worsened performance.
-"""
-
 from typing import Dict, List, Optional
 import json
 from .audit_log import log_validation_test
 
-
-# Standardized profile names matching profiles.yaml
 OPTIMIZATION_PROFILES = {
     "gaming": "gaming",
     "streaming": "streaming", 
@@ -22,10 +15,6 @@ OPTIMIZATION_PROFILES = {
 
 
 class ValidationEngine:
-    """
-    Compares before/after performance metrics and decides if changes are beneficial.
-    """
-    
     @staticmethod
     def validate_gaming_profile(before: Dict, after: Dict) -> Dict:
         """

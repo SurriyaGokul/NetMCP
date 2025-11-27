@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Performance benchmark script for MCP Network Optimizer.
-Measures the actual impact of network optimizations on system performance.
-"""
 import subprocess
 import time
 import json
@@ -10,14 +6,12 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from server.tools.util.shell import run
 
 
 class NetworkBenchmark:
-    """Benchmark network performance before and after optimizations."""
     
     def __init__(self):
         self.results = {}

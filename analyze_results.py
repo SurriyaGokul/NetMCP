@@ -1,27 +1,10 @@
-"""
-Script to analyze the network performance results from screenshots
-and generate comparison plots for the report.
-
-PROFILES TESTED:
-1. Bulk Transfer
-2. Streaming  
-3. Video Calls
-4. Server
-
-BASELINE: "Balanced" profile (before applying any specific optimization)
-"""
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Data extracted from the ACTUAL test results provided
-# Baseline = "Balanced" profile (default system state)
-
-# Profile 1: Video Calls Profile
 video_calls_data = {
     'profile': 'Video Calls',
-    'before': {  # Balanced baseline
-        'latency_avg': 20.545,  # ms
+    'before': {
+        'latency_avg': 20.545,
         'jitter': 57.60,
         'packet_loss': 0.0,
         'connection_time': 44.323,
@@ -36,11 +19,10 @@ video_calls_data = {
     }
 }
 
-# Profile 2: Bulk Transfer Profile
 bulk_transfer_data = {
     'profile': 'Bulk Transfer',
-    'before': {  # Balanced baseline
-        'latency_avg': 29.42,  # ms
+    'before': {
+        'latency_avg': 29.42,
         'jitter': 106.00,
         'packet_loss': 0.0,
         'connection_time': 45.63,
@@ -55,10 +37,9 @@ bulk_transfer_data = {
     }
 }
 
-# Profile 3: Streaming Profile
 streaming_data = {
     'profile': 'Streaming',
-    'before': {  # Balanced baseline
+    'before': {
         'latency_avg': 18.48,
         'jitter': 11.70,
         'connection_time': 49.31,
@@ -72,10 +53,9 @@ streaming_data = {
     }
 }
 
-# Profile 4: Server Profile
 server_data = {
     'profile': 'Server',
-    'before': {  # Balanced baseline
+    'before': {
         'latency_avg': 19.21,
         'jitter': 25.20,
         'max_latency': 40.6,
@@ -94,7 +74,6 @@ server_data = {
 }
 
 def create_bulk_transfer_plot():
-    """Create double plot for Bulk Transfer profile"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
     # Performance metrics
@@ -157,7 +136,6 @@ def create_bulk_transfer_plot():
     print("✓ Bulk Transfer profile plot saved")
 
 def create_streaming_plot():
-    """Create double plot for Streaming profile"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
     # Performance metrics
@@ -224,12 +202,10 @@ def create_streaming_plot():
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Set style for professional plots
 plt.style.use('seaborn-v0_8-darkgrid')
 colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
 
 def create_gaming_plot():
-    """Gaming Profile: Ultra-low latency optimization"""
     metrics = ['Avg Latency\n(ms)', 'Jitter\n(ms)', 'Max Latency\n(ms)', 
                'Connection\nTime (ms)', 'DNS Query\n(ms)', 'Multi-Host\nAvg (ms)']
     before = [18.90, 46.20, 61.1, 29.32, 18.40, 12.05]
@@ -289,7 +265,6 @@ def create_gaming_plot():
     plt.close()
 
 def create_video_calls_plot():
-    """Create double plot for Video Calls profile"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
     # Metrics comparison
@@ -352,7 +327,6 @@ def create_video_calls_plot():
     print("✓ Video Calls profile plot saved")
 
 def create_server_plot():
-    """Create double plot for Server profile"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
     # Metrics comparison

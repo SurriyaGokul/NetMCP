@@ -8,18 +8,6 @@ import os
 
 
 def apply_rendered_plan(rendered_plan: dict, checkpoint_label: str | None = None) -> dict:
-    """
-    Apply a rendered plan atomically with rollback capability.
-    
-    INPUT:  RenderedPlan dict
-    OUTPUT: ChangeReport dict:
-      { "applied": bool, "dry_run": bool, "commands_preview": {...}, "errors": [], 
-        "checkpoint_id": str, "notes": [] }
-    
-    Args:
-        rendered_plan: The rendered plan containing commands to execute
-        checkpoint_label: Optional label for the checkpoint
-    """
     try:
         plan = RenderedPlan(**rendered_plan)
     except Exception as e:
