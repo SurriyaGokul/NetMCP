@@ -17,9 +17,9 @@
 
 ---
 
-## 🎯 What is MCP Network Optimizer?
+## 🎯 What is NetMCP?
 
-MCP Network Optimizer is an **AI-native network configuration system** that bridges the gap between high-level optimization goals and low-level Linux networking commands. It exposes a comprehensive suite of network optimization capabilities through the Model Context Protocol (MCP), allowing LLMs and AI agents to:
+NetMCP is an **AI-native network configuration system** that bridges the gap between high-level optimization goals and low-level Linux networking commands. It exposes a comprehensive suite of network optimization capabilities through the Model Context Protocol (MCP), allowing LLMs and AI agents to:
 
 - 🔍 **Discover** system network configuration and performance metrics
 - 📋 **Plan** optimizations using declarative, type-safe specifications
@@ -27,9 +27,9 @@ MCP Network Optimizer is an **AI-native network configuration system** that brid
 - 🔧 **Render** abstract plans into concrete system commands
 - ⚡ **Apply** changes safely with automatic rollback on failure
 
-### Why MCP Network Optimizer?
+### Why NetMCP?
 
-Traditional network optimization requires deep Linux expertise and manual command execution. MCP Network Optimizer makes this accessible to AI agents by:
+Traditional network optimization requires deep Linux expertise and manual command execution. NetMCP makes this accessible to AI agents by:
 
 - **Declarative Configuration**: Describe *what* you want, not *how* to do it
 - **Policy-Driven Safety**: All changes validated against configurable rules
@@ -181,7 +181,7 @@ print(f"📍 Checkpoint: {report['checkpoint_id']}")
 
 ### Workflow Overview
 
-MCP Network Optimizer follows a **5-stage pipeline** that transforms high-level optimization goals into safe, validated system changes:
+NetMCP follows a **5-stage pipeline** that transforms high-level optimization goals into safe, validated system changes:
 
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
@@ -367,7 +367,7 @@ State          (Pydantic)     & Limits        & Scripts       w/Rollback
 
 ## 🎯 Optimization Profiles
 
-MCP Network Optimizer includes **5 research-backed profiles** optimized for specific network workloads. Each profile activates a curated set of configuration cards based on academic research (BBR, TCP tuning studies) and industry best practices.
+NetMCP includes **5 research-backed profiles** optimized for specific network workloads. Each profile activates a curated set of configuration cards based on academic research (BBR, TCP tuning studies) and industry best practices.
 
 ### 🎮 Gaming Profile
 **Goal**: Ultra-low latency for competitive gaming (FPS, MOBAs, esports)
