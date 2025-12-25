@@ -1,8 +1,8 @@
-from ...schema.models import RenderedPlan, ChangeReport
-from .checkpoints import snapshot_checkpoint, rollback_to_checkpoint
-from ..util.shell import run
-from . import nft as apply_nft
-from ..audit_log import log_checkpoint_creation, log_command_execution, log_plan_application
+from server.schema.models import RenderedPlan, ChangeReport
+from server.tools.apply.checkpoints import snapshot_checkpoint, rollback_to_checkpoint
+from server.tools.util.shell import run
+from server.tools.apply import nft as apply_nft
+from server.tools.audit_log import log_checkpoint_creation, log_command_execution, log_plan_application
 import tempfile
 import os
 

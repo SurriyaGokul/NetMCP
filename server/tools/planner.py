@@ -1,6 +1,6 @@
 def render_change_plan(plan: dict) -> dict:
-    from ..schema.models import ParameterPlan, RenderedPlan
-    from .audit_log import log_plan_rendering
+    from server.schema.models import ParameterPlan, RenderedPlan
+    from server.tools.audit_log import log_plan_rendering
     
     try:
         param_plan = ParameterPlan(**plan)

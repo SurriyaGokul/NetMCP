@@ -1,24 +1,24 @@
 import json
-from .tools.planner import render_change_plan
-from .tools.validator import validate_change_plan
-from .tools.apply.apply import apply_rendered_plan
-from .tools.apply.checkpoints import (
+from server.tools.planner import render_change_plan
+from server.tools.validator import validate_change_plan
+from server.tools.apply.apply import apply_rendered_plan
+from server.tools.apply.checkpoints import (
     snapshot_checkpoint,
     rollback_to_checkpoint,
     list_checkpoints,
     delete_checkpoint
 )
-from .tools import discovery as _disc
-from .tools.apply import (
+from server.tools import discovery as _disc
+from server.tools.apply import (
     sysctl as _apply_sysctl,
     tc as _apply_tc,
     nft as _apply_nft,
     iptables as _apply_iptables
 )
-from .tools.validation_metrics import run_full_benchmark
-from .tools.validation_engine import ValidationEngine
-from .tools.audit_log import get_audit_logger
-from .tools.util.shell import (
+from server.tools.validation_metrics import run_full_benchmark
+from server.tools.validation_engine import ValidationEngine
+from server.tools.audit_log import get_audit_logger
+from server.tools.util.shell import (
     check_sudo_access,
     request_sudo_access,
     extend_sudo_cache,
@@ -137,7 +137,7 @@ def register_tools(mcp):
     
     @mcp.tool()
     def quick_latency_test_tool() -> dict:
-        from .tools.validation_metrics import quick_latency_test
+        from server.tools.validation_metrics import quick_latency_test
         return quick_latency_test()
     
     @mcp.tool()
@@ -156,7 +156,7 @@ def register_tools(mcp):
         profile: str = "gaming",
         auto_rollback: bool = True
     ) -> dict:
-        from .tools.validation_engine import ValidationEngine
+        from server.tools.validation_engine import ValidationEngine
         
         validation = ValidationEngine.compare_benchmarks(before_results, after_results, profile)
         

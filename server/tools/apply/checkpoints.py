@@ -2,8 +2,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
-from ..util.shell import run, run_privileged
-from ..audit_log import log_rollback
+from server.tools.util.shell import run, run_privileged
+from server.tools.audit_log import log_rollback
 
 
 # Checkpoint storage location

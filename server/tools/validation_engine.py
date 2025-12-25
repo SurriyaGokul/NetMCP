@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 import json
-from .audit_log import log_validation_test
+from server.tools.audit_log import log_validation_test
 
 OPTIMIZATION_PROFILES = {
     "gaming": "gaming",

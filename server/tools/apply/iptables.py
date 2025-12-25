@@ -47,7 +47,7 @@ def apply_connection_limits(limits: list[dict]) -> dict:
 		script = "\n".join(script_lines)
 		
 		# Apply via nft module
-		from . import nft as apply_nft
+		from server.tools.apply import nft as apply_nft
 		return apply_nft.apply_nft_ruleset(script)
 		
 	except Exception as e:
@@ -81,7 +81,7 @@ def apply_rate_limits(limits: list[dict]) -> dict:
 		
 		script = "\n".join(script_lines)
 		
-		from . import nft as apply_nft
+		from server.tools.apply import nft as apply_nft
 		return apply_nft.apply_nft_ruleset(script)
 		
 	except Exception as e:
@@ -106,7 +106,7 @@ def apply_connection_tracking(tracking: dict) -> dict:
 			)
 		
 		# Apply via sysctl module
-		from . import sysctl as apply_sysctl
+		from server.tools.apply import sysctl as apply_sysctl
 		return apply_sysctl.set_sysctl(sysctl_params)
 		
 	except Exception as e:
@@ -143,7 +143,7 @@ def apply_nat_rules(nat_rules: list[dict]) -> dict:
 		
 		script = "\n".join(script_lines)
 		
-		from . import nft as apply_nft
+		from server.tools.apply import nft as apply_nft
 		return apply_nft.apply_nft_ruleset(script)
 		
 	except Exception as e:
