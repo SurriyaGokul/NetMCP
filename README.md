@@ -8,12 +8,25 @@
 [![MCP](https://img.shields.io/badge/MCP-Enabled-00ADD8?style=for-the-badge&logo=anthropic&logoColor=white)](https://modelcontextprotocol.io/)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Live on FastMCP](https://img.shields.io/badge/Live-FastMCP%20Cloud-FF6B6B?style=for-the-badge&logo=cloud&logoColor=white)](https://netmcp.fastmcp.app/mcp)
 
 **Transform natural language into optimized network configurations**
 
-[Getting Started](#-getting-started) · [Features](#-features) · [Profiles](#-optimization-profiles) · [Architecture](#-architecture) · [Tools](#-mcp-tools)
+[🔴 Live Server](#-live-server) · [Getting Started](#-getting-started) · [Features](#-features) · [Profiles](#-optimization-profiles) · [Architecture](#-architecture) · [Tools](#-mcp-tools)
 
 </div>
+
+---
+
+## 🔴 Live Server
+
+NetMCP is **live in production** on FastMCP Cloud! Connect your MCP client to:
+
+```
+https://netmcp.fastmcp.app/mcp
+```
+
+No installation required—just point your AI assistant to the hosted server and start optimizing.
 
 ---
 
