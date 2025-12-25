@@ -18,6 +18,12 @@ from .tools.apply import (
 from .tools.validation_metrics import run_full_benchmark
 from .tools.validation_engine import ValidationEngine
 from .tools.audit_log import get_audit_logger
+from .tools.util.shell import (
+    check_sudo_access,
+    request_sudo_access,
+    extend_sudo_cache,
+    is_sudo_configured
+)
 
 
 def register_resources(mcp, policy_registry):
@@ -39,6 +45,64 @@ def register_resources(mcp, policy_registry):
 
 
 def register_tools(mcp):
+    
+# Sudo/Privileges Management Tools
+    
+    @mcp.tool()
+    def check_sudo_access_tool() -> dict:
+        """
+        Check if sudo (root) access is available for running privileged network commands.
+        Returns whether passwordless sudo is configured or if credentials are cached.
+        """
+        return check_sudo_access()
+    
+    @mcp.tool()
+    def request_sudo_access_tool(password: str = None) -> dict:
+        """
+        Request sudo access by authenticating with password.
+        Once authenticated, credentials are cached for ~15 minutes.
+        For permanent access, user should run ./setup_sudo.sh instead.
+        
+        Args:
+            password: User's sudo password. Required for authentication.
+        
+        Returns:
+            Success status and cache duration info.
+        """
+        return request_sudo_access(password)
+    
+    @mcp.tool()
+    def extend_sudo_cache_tool() -> dict:
+        """
+        Extend the sudo credential cache to prevent timeout during long operations.
+        Call this periodically (every 10-14 minutes) during extended sessions.
+        """
+        return extend_sudo_cache()
+    
+    @mcp.tool()
+    def get_sudo_setup_instructions_tool() -> dict:
+        """
+        Get instructions for setting up permanent passwordless sudo access.
+        This is the recommended approach for regular use.
+        """
+        return {
+            "instructions": [
+                "For permanent passwordless sudo access, run the setup script:",
+                "",
+                "  ./setup_sudo.sh",
+                "",
+                "This will configure your system to allow the MCP server to run",
+                "network configuration commands (sysctl, tc, nft, etc.) without",
+                "requiring a password each time.",
+                "",
+                "The script only grants access to specific network tools, not full root."
+            ],
+            "alternative": "Or use request_sudo_access_tool with your password for temporary access (~15 min)",
+            "is_configured": is_sudo_configured()
+        }
+
+# Core Plan Tools
+    
     @mcp.tool()
     def render_change_plan_tool(plan: dict) -> dict:
         return render_change_plan(plan)
