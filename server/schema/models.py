@@ -90,7 +90,7 @@ class Changes(BaseModel):
 class ParameterPlan(BaseModel):
     model_config = {"populate_by_name": True}
     
-    iface: str = Field(..., alias='interface', description="Network interface name (e.g., 'eth0', 'wlan0')")
+    iface: str = Field(..., alias='iface', description="Network interface name (e.g., 'eth0', 'wlan0')")
     profile: str = Field(..., description="Profile name from available profiles")
     changes: Changes = Field(..., description="Network configuration changes to apply")
     validation: Optional[ValidateSpec] = Field(None, description="Optional validation targets and objectives")

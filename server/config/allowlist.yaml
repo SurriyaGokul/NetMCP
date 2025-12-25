@@ -4,6 +4,8 @@ binaries:
   - /usr/sbin/nft
   - /usr/sbin/ip
   - /usr/sbin/ethtool
+  - /usr/bin/traceroute
+  - /usr/bin/tracepath 
   - /usr/bin/ping
   - /usr/bin/hostname
   - /usr/bin/hostnamectl

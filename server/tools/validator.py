@@ -57,7 +57,7 @@ def validate_change_plan(parameter_plan: dict) -> dict:
         errors.append(f"Schema validation failed: {str(e)}")
         return {"ok": False, "errors": errors, "plan": None}
     
-    VALID_PROFILES = ["gaming", "streaming", "video_calls", "bulk_transfer", "server"]
+    VALID_PROFILES = ["gaming","balanced", "streaming", "video_calls", "bulk_transfer", "server"]
     if validated_plan.profile not in VALID_PROFILES:
         errors.append(
             f"Invalid profile '{validated_plan.profile}'. Must be one of: {', '.join(VALID_PROFILES)}"
