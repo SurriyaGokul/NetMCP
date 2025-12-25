@@ -8,6 +8,7 @@ OPTIMIZATION_PROFILES = {
     "video_calls": "video_calls",
     "bulk_transfer": "bulk_transfer",
     "server": "server",
+    "balanced": "balanced",
     
     # Legacy aliases for backward compatibility
     "throughput": "streaming",  # Legacy: throughput → streaming
@@ -58,7 +59,7 @@ class ValidationEngine:
         before_avg = before_lat["avg_ms"]
         after_avg = after_lat["avg_ms"]
         latency_change = after_avg - before_avg
-        latency_change_pct = (latency_change / before_avg) * 100
+        latency_change_pct = (latency_change / before_avg) * 100 if before_avg > 0 else 0
         
         if after_avg < before_avg * 0.95:  # 5%+ improvement
             improvement = before_avg - after_avg
@@ -852,6 +853,7 @@ class ValidationEngine:
             "video_calls": ValidationEngine.validate_video_calls_profile,
             "bulk_transfer": ValidationEngine.validate_bulk_transfer_profile,
             "server": ValidationEngine.validate_server_profile,
+            "balanced": ValidationEngine.validate_balanced_profile,
             
             # Legacy: throughput is now streaming
             "throughput": ValidationEngine.validate_throughput_profile,

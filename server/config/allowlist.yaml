@@ -5,8 +5,9 @@ binaries:
   - /usr/sbin/ip
   - /usr/sbin/ethtool
   - /usr/bin/traceroute
-  - /usr/bin/tracepath 
+  - /usr/bin/tracepath
   - /usr/bin/ping
+  - /usr/bin/iperf3
   - /usr/bin/hostname
   - /usr/bin/hostnamectl
   - /usr/bin/arp
