@@ -20,11 +20,13 @@ POLICY_ROOT = PROJECT_ROOT / "policy" / "config_cards"
 
 policy_registry = PolicyRegistry(policy_root=str(POLICY_ROOT))
 
+# Create server at module level with standard name for FastMCP Cloud discovery
+mcp = FastMCP("MCP Network Optimizer")
+register_resources(mcp, policy_registry)
+register_tools(mcp)
+
 def main():
-    mcp_server = FastMCP("MCP Network Optimizer")
-    register_resources(mcp_server, policy_registry)
-    register_tools(mcp_server)
-    mcp_server.run()
+    mcp.run()
 
 if __name__ == "__main__":
     main()
