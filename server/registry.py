@@ -18,10 +18,6 @@ from .tools.apply import (
 from .tools.validation_metrics import run_full_benchmark
 from .tools.validation_engine import ValidationEngine
 from .tools.audit_log import get_audit_logger
-from .tools.audit_log import get_audit_logger
-import tempfile
-from .tools.validation_metrics import run_full_benchmark
-from .tools.validation_engine import ValidationEngine
 
 
 def register_resources(mcp, policy_registry):
